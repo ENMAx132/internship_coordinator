@@ -1,23 +1,29 @@
-import 'package:flutter/material.dart';
-import 'screen/home_screen.dart'; // O 'screens/home_screen.dart' según cómo tengas tu carpeta
+﻿import 'package:flutter/material.dart';
+import 'screens/welcome_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const InventarioApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class InventarioApp extends StatelessWidget {
+  const InventarioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Inventario',
       debugShowCheckedModeBanner: false,
-      title: 'Inventario de Oficina',
       theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFFBFBFE),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6366F1),
+          primary: const Color(0xFF6366F1),
+          surface: Colors.white,
+        ),
+        fontFamily: 'Roboto',
       ),
-      home: const HomeScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }
