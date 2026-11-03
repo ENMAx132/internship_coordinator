@@ -37,11 +37,12 @@ class _CelebrationScreenState extends State<CelebrationScreen> with SingleTicker
   }
 
   void _continuar() {
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (_) => HomeScreen(apartados: widget.apartados),
       ),
+      (route) => false,
     );
   }
 

@@ -45,7 +45,8 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Editar Objeto', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text('Editar Objeto',
+          style: TextStyle(fontWeight: FontWeight.bold)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -68,7 +69,8 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
             ),
             TextField(
               controller: valorCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(labelText: 'Valor'),
             ),
             TextField(
@@ -119,6 +121,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                 responsable: responsableCtrl.text.trim().isEmpty
                     ? widget.objeto.responsable
                     : responsableCtrl.text.trim(),
+                fechaRegistro: widget.objeto.fechaRegistro,
               ),
             );
             Navigator.pop(context);

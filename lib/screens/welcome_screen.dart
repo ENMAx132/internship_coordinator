@@ -1,9 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
-import '../screens/apartado_screen.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -29,24 +29,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     if (apartadoCreado == null) return;
 
-    // Agregamos el nuevo apartado a la lista general para que no se pierda
     setState(() {
       _apartados.add(apartadoCreado!);
     });
 
     if (!mounted) return;
 
-    // En lugar de hacer malabares con dos rutas, navegamos directamente
-    // a la pantalla de apartados pasándole la lista actualizada de apartados.
-    // De esta forma, si el usuario presiona "atrás" desde ApartadoScreen,
-    // puedes programar el botón de la AppBar de ApartadoScreen para que regrese a HomeScreen.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => ApartadoScreen(apartado: apartadoCreado!, apartados: _apartados),
+        builder: (_) => HomeScreen(apartados: _apartados),
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     if (_onboardingCompletado) {
@@ -88,7 +84,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6366F1),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 34, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

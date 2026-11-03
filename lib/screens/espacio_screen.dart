@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
@@ -14,19 +14,18 @@ class EspacioScreen extends StatefulWidget {
   final Espacio espacio;
   final List<Apartado> apartados;
 
-  const EspacioScreen({super.key, required this.espacio, required this.apartados});
+  const EspacioScreen(
+      {super.key, required this.espacio, required this.apartados});
 
   @override
   State<EspacioScreen> createState() => _EspacioScreenState();
 }
 
 class _EspacioScreenState extends State<EspacioScreen> {
-  late final List<ObjetoInventario> _objetos;
-
-  @override
-  void initState() {
-    super.initState();
-    _objetos = objetosIniciales.where((o) => o.espacioId == widget.espacio.id).toList();
+  List<ObjetoInventario> get _objetos {
+    return objetosIniciales
+        .where((o) => o.espacioId == widget.espacio.id)
+        .toList();
   }
 
   @override
@@ -36,7 +35,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Color(0xFF0F172A), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -47,6 +47,13 @@ class _EspacioScreenState extends State<EspacioScreen> {
             color: Color(0xFF0F172A),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
+            tooltip: 'Agregar objeto',
+            onPressed: _dialogoCrearObjeto,
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -96,7 +103,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
                           const SizedBox(height: 2),
                           Text(
                             widget.espacio.descripcion,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF64748B)),
                           ),
                         ],
                       ),
@@ -193,7 +201,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
         onGuardar: (obj) {
           final esPrimer = _objetos.isEmpty;
           setState(() {
-            _objetos.add(obj);
+            objetosIniciales.add(obj);
           });
           if (esPrimer) {
             Navigator.pushReplacement(
@@ -216,7 +224,9 @@ class _EspacioScreenState extends State<EspacioScreen> {
       context: context,
       builder: (ctx) => TransferirDialog(
         objeto: obj,
-        espacios: [widget.espacio],
+        espacios: espaciosIniciales
+            .where((e) => e.apartadoId == widget.espacio.apartadoId)
+            .toList(),
         onTransferir: (nuevoEspacioId) {
           setState(() {
             obj.espacioId = nuevoEspacioId;
@@ -237,9 +247,10 @@ class _EspacioScreenState extends State<EspacioScreen> {
         espacios: [widget.espacio],
         onActualizar: (o) {
           setState(() {
-            final index = _objetos.indexWhere((item) => item.id == o.id);
+            final index =
+                objetosIniciales.indexWhere((item) => item.id == o.id);
             if (index != -1) {
-              _objetos[index] = o;
+              objetosIniciales[index] = o;
             }
           });
         },

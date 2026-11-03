@@ -1,4 +1,4 @@
-﻿import '../models/apartado.dart';
+import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 
@@ -72,6 +72,7 @@ final List<ObjetoInventario> objetosIniciales = [
     estado: 'Operativo',
     valor: 3450.0,
     responsable: 'Carlos Ruiz',
+    fechaRegistro: DateTime(2026, 10, 24, 9, 15),
   ),
   ObjetoInventario(
     id: '2',
@@ -82,6 +83,7 @@ final List<ObjetoInventario> objetosIniciales = [
     estado: 'Excelente',
     valor: 1250.0,
     responsable: 'Dra. Patricia Silva',
+    fechaRegistro: DateTime(2026, 10, 25, 11, 40),
   ),
   ObjetoInventario(
     id: '3',
@@ -92,6 +94,7 @@ final List<ObjetoInventario> objetosIniciales = [
     estado: 'Operativo',
     valor: 320.0,
     responsable: 'Roberto Gómez',
+    fechaRegistro: DateTime(2026, 10, 27, 15, 5),
   ),
   ObjetoInventario(
     id: '4',
@@ -102,6 +105,7 @@ final List<ObjetoInventario> objetosIniciales = [
     estado: 'Excelente',
     valor: 2100.0,
     responsable: 'Recepción / General',
+    fechaRegistro: DateTime(2026, 10, 29, 8, 30),
   ),
   ObjetoInventario(
     id: '5',
@@ -112,5 +116,6 @@ final List<ObjetoInventario> objetosIniciales = [
     estado: 'Excelente',
     valor: 1800.0,
     responsable: 'Bernardo',
+    fechaRegistro: DateTime(2026, 10, 31, 19, 20),
   ),
 ];

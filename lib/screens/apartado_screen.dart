@@ -1,180 +1,176 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import '../widgets/dialogos/editar_espacio_dialog.dart';
-import '../widgets/dialogos/ver_objetos_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/sector_card.dart';
-import '../screens/espacio_screen.dart';
-import 'home_screen.dart';
+import 'espacio_screen.dart';
 
 class ApartadoScreen extends StatefulWidget {
   final Apartado apartado;
   final List<Apartado> apartados;
 
-  const ApartadoScreen({super.key, required this.apartado, required this.apartados});
+  const ApartadoScreen(
+      {super.key, required this.apartado, required this.apartados});
 
   @override
   State<ApartadoScreen> createState() => _ApartadoScreenState();
 }
 
 class _ApartadoScreenState extends State<ApartadoScreen> {
-  late final List<Espacio> _espacios;
-  late final List<ObjetoInventario> _objetos;
-
-  @override
-  void initState() {
-    super.initState();
-    _espacios = espaciosIniciales.where((e) => e.apartadoId == widget.apartado.id).toList();
-    _objetos = objetosIniciales
-        .where((o) => _espacios.any((e) => e.id == o.espacioId))
+  List<Espacio> get _espacios {
+    return espaciosIniciales
+        .where((e) => e.apartadoId == widget.apartado.id)
         .toList();
+  }
+
+  List<ObjetoInventario> get _objetos {
+    final ids = _espacios.map((e) => e.id).toSet();
+    return objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
+  }
+
+  int _conteoPorEspacio(String espacioId) {
+    return objetosIniciales.where((o) => o.espacioId == espacioId).length;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // Sobrescribimos el botón de atrás para que vaya directo a HomeScreen
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (_) => HomeScreen(apartados: widget.apartados), // Le pasas la lista actual de apartados
-              ),
-                  (route) => false, // Borra el historial anterior para que no dé error
-            );
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(widget.apartado.nombre),
       ),
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          widget.apartado.icono,
-                          style: const TextStyle(fontSize: 30),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.apartado.nombre,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.apartado.descripcion,
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Espacios',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        widget.apartado.icono,
+                        style: const TextStyle(fontSize: 30),
                       ),
                     ),
-                    InkWell(
-                      onTap: _dialogoCrearEspacio,
-                      borderRadius: BorderRadius.circular(50),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF6366F1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.apartado.nombre,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.apartado.descripcion,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${_espacios.length} espacios • ${_objetos.length} objetos',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6366F1),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: _espacios.isEmpty
-                  ? SliverToBoxAdapter(
-                      child: _construirEspacioVacio(),
-                    )
-                  : SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Espacios',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _dialogoCrearEspacio,
+                    borderRadius: BorderRadius.circular(50),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF6366F1),
+                        shape: BoxShape.circle,
+                      ),
+                      child:
+                          const Icon(Icons.add, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _espacios.isEmpty
+                  ? _construirEspacioVacio()
+                  : GridView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         crossAxisSpacing: 14,
                         mainAxisSpacing: 14,
                         childAspectRatio: 1.15,
                       ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final espacio = _espacios[index];
-                          final conteo = _objetos
-                              .where((o) => o.espacioId == espacio.id)
-                              .length;
-                          return SectorCard(
-                            espacio: espacio,
-                            conteo: conteo,
-                            isSelected: false,
-                            onTap: () => _dialogoVerObjetos(espacio),
-                            onLongPress: () => _dialogoEditarEspacio(espacio),
-                          );
-                        },
-                        childCount: _espacios.length,
-                      ),
+                      itemCount: _espacios.length,
+                      itemBuilder: (context, index) {
+                        final espacio = _espacios[index];
+                        return SectorCard(
+                          espacio: espacio,
+                          conteo: _conteoPorEspacio(espacio.id),
+                          isSelected: false,
+                          onTap: () => _abrirEspacio(espacio),
+                          onLongPress: () => _dialogoEditarEspacio(espacio),
+                        );
+                      },
                     ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
       ),
@@ -182,16 +178,12 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
   }
 
   Widget _construirEspacioVacio() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      alignment: Alignment.center,
+    return Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '🗂️',
-            style: TextStyle(fontSize: 40),
-          ),
-          const SizedBox(height: 8),
+          const Text('🗂️', style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 10),
           const Text(
             'Aún no hay espacios en este apartado',
             style: TextStyle(
@@ -213,40 +205,30 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     );
   }
 
+  void _abrirEspacio(Espacio espacio) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EspacioScreen(
+          espacio: espacio,
+          apartados: widget.apartados,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   void _dialogoCrearEspacio() {
     showDialog(
       context: context,
       builder: (ctx) => CrearEspacioDialog(
         apartados: [widget.apartado],
         onCrear: (espacio) {
-          final esPrimer = _espacios.isEmpty;
           setState(() {
-            _espacios.add(espacio);
+            espaciosIniciales.add(espacio);
           });
-          if (esPrimer) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EspacioScreen(
-                  espacio: espacio,
-                  apartados: widget.apartados,
-                ),
-              ),
-            );
-          }
         },
-      ),
-    );
-  }
-
-  void _dialogoVerObjetos(Espacio espacio) {
-    final objetos = _objetos.where((o) => o.espacioId == espacio.id).toList();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => VerObjetosDialog(
-        espacio: espacio,
-        objetos: objetos,
       ),
     );
   }
@@ -259,9 +241,10 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
         apartados: widget.apartados,
         onActualizar: (e) {
           setState(() {
-            final index = _espacios.indexWhere((item) => item.id == e.id);
+            final index =
+                espaciosIniciales.indexWhere((item) => item.id == e.id);
             if (index != -1) {
-              _espacios[index] = e;
+              espaciosIniciales[index] = e;
             }
           });
           ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +253,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
         },
         onEliminar: (e) {
           setState(() {
-            _espacios.removeWhere((item) => item.id == e.id);
+            espaciosIniciales.removeWhere((item) => item.id == e.id);
+            objetosIniciales.removeWhere((item) => item.espacioId == e.id);
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Espacio eliminado correctamente.')),

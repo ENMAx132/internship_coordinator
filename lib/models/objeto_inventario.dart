@@ -8,6 +8,7 @@ class ObjetoInventario {
   final String estado; // Excelente, Operativo, Mantenimiento
   final double valor;
   final String responsable;
+  final DateTime fechaRegistro;
 
   ObjetoInventario({
     required this.id,
@@ -18,5 +19,6 @@ class ObjetoInventario {
     required this.estado,
     required this.valor,
     required this.responsable,
-  });
+    DateTime? fechaRegistro,
+  }) : fechaRegistro = fechaRegistro ?? DateTime.now();
 }
