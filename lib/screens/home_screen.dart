@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_settings.dart';
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
+import '../models/espacio.dart';
 import '../widgets/apartado_card.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/dialogos/crear_objeto_dialog.dart';
+import '../widgets/sector_card.dart';
 import 'apartado_screen.dart';
+import 'espacio_screen.dart';
 import 'historial_screen.dart';
 import 'metricas_screen.dart';
 
@@ -20,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _paginaActual = 1;
+  int _paginaActual = 0;
 
   List<Apartado> get _apartados => widget.apartados;
 
@@ -185,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: IndexedStack(
           index: _paginaActual,
           children: [
-            const SizedBox.expand(),
+            _construirInicio(),
             _construirApartados(),
             HistorialScreen(),
             MetricasScreen(apartados: _apartados),
@@ -193,6 +197,53 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: _construirBarraNavegacion(),
+    );
+  }
+
+  Widget _construirInicio() {
+    if (_apartados.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: _construirApartadoVacio(),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Inicio',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Desliza para cambiar de apartado',
+            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: ValueListenableBuilder<String>(
+              valueListenable: apartadoInicioId,
+              builder: (context, id, _) {
+                return _InicioApartados(
+                  apartados: _apartados,
+                  apartadoInicialId: id,
+                  onRefresh: () {
+                    if (mounted) setState(() {});
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -500,6 +551,295 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InicioApartados extends StatefulWidget {
+  final List<Apartado> apartados;
+  final String apartadoInicialId;
+  final VoidCallback onRefresh;
+
+  const _InicioApartados({
+    required this.apartados,
+    required this.apartadoInicialId,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_InicioApartados> createState() => _InicioApartadosState();
+}
+
+class _InicioApartadosState extends State<_InicioApartados> {
+  late final PageController _controller;
+  late int _pagina;
+
+  @override
+  void initState() {
+    super.initState();
+    _pagina = _indiceInicial();
+    _controller = PageController(initialPage: _pagina);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InicioApartados oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.apartadoInicialId != widget.apartadoInicialId) {
+      final nuevoIndice = _indiceInicial();
+      if (nuevoIndice != _pagina) {
+        setState(() => _pagina = nuevoIndice);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_controller.hasClients) {
+            _controller.jumpToPage(nuevoIndice);
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int _indiceInicial() {
+    final indice = widget.apartados.indexWhere(
+      (a) => a.id == widget.apartadoInicialId,
+    );
+    return indice < 0 ? 0 : indice;
+  }
+
+  void _abrirApartado(Apartado apartado) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ApartadoScreen(
+          apartado: apartado,
+          apartados: widget.apartados,
+        ),
+      ),
+    ).then((_) => widget.onRefresh());
+  }
+
+  void _abrirEspacio(Espacio espacio) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EspacioScreen(
+          espacio: espacio,
+          apartados: widget.apartados,
+        ),
+      ),
+    ).then((_) => widget.onRefresh());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: widget.apartados.length,
+            onPageChanged: (index) {
+              setState(() => _pagina = index);
+            },
+            itemBuilder: (context, index) {
+              final apartado = widget.apartados[index];
+              return _construirPagina(apartado);
+            },
+          ),
+        ),
+        if (widget.apartados.length > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.apartados.length, (index) {
+                final activo = index == _pagina;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: activo ? 18 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: activo
+                        ? const Color(0xFF6366F1)
+                        : const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _construirPagina(Apartado apartado) {
+    final espacios =
+        espaciosIniciales.where((e) => e.apartadoId == apartado.id).toList();
+    final ids = espacios.map((e) => e.id).toSet();
+    final totalObjetos =
+        objetosIniciales.where((o) => ids.contains(o.espacioId)).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          onTap: () => _abrirApartado(apartado),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    apartado.icono,
+                    style: const TextStyle(fontSize: 30),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        apartado.nombre,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        apartado.descripcion,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${espacios.length} espacios • $totalObjetos objetos',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: Color(0xFF94A3B8),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Espacios',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              '${espacios.length} en este apartado',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: espacios.isEmpty
+              ? _construirVacio(apartado)
+              : GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 1.15,
+                  ),
+                  itemCount: espacios.length,
+                  itemBuilder: (context, index) {
+                    final espacio = espacios[index];
+                    final conteo = objetosIniciales
+                        .where((o) => o.espacioId == espacio.id)
+                        .length;
+                    return SectorCard(
+                      espacio: espacio,
+                      conteo: conteo,
+                      isSelected: false,
+                      onTap: () => _abrirEspacio(espacio),
+                      onLongPress: () => _abrirApartado(apartado),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _construirVacio(Apartado apartado) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🗂️', style: TextStyle(fontSize: 44)),
+          const SizedBox(height: 10),
+          Text(
+            '${apartado.nombre} aún no tiene espacios',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => _abrirApartado(apartado),
+            child: const Text('Abrir apartado'),
+          ),
+        ],
       ),
     );
   }
