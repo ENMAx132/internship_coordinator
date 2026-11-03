@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import 'ajustes_screen.dart';
+import 'ver_todos_objetos_screen.dart';
 
 class MetricasScreen extends StatefulWidget {
   final List<Apartado> apartados;
@@ -125,12 +126,12 @@ class _MetricasScreenState extends State<MetricasScreen> {
               }),
               const SizedBox(width: 8),
               ...widget.apartados.map(
-                (apartado) => Padding(
+                    (apartado) => Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _construirChip(
                     '${apartado.icono} ${apartado.nombre}',
                     _apartadoSeleccionadoId == apartado.id,
-                    () {
+                        () {
                       setState(() => _apartadoSeleccionadoId = apartado.id);
                     },
                   ),
@@ -155,6 +156,16 @@ class _MetricasScreenState extends State<MetricasScreen> {
                 icono: Icons.inventory_2_outlined,
                 etiqueta: 'Objetos',
                 valor: '${_objetos.length}',
+                onTap: () async {
+                  // Navega a la pantalla de todos los objetos y actualiza al volver
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VerTodosObjetosScreen(),
+                    ),
+                  );
+                  setState(() {});
+                },
               ),
             ),
           ],
@@ -230,59 +241,64 @@ class _MetricasScreenState extends State<MetricasScreen> {
     required IconData icono,
     required String etiqueta,
     required String valor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
-              borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            child: Icon(icono, size: 20, color: const Color(0xFF6366F1)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  etiqueta,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  valor,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-              ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icono, size: 20, color: const Color(0xFF6366F1)),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    etiqueta,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    valor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -337,7 +353,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
               children: [
                 Expanded(
                   child:
-                      _construirMiniMetrica('${espacios.length}', 'Espacios'),
+                  _construirMiniMetrica('${espacios.length}', 'Espacios'),
                 ),
                 Expanded(
                   child: _construirMiniMetrica('${objetos.length}', 'Objetos'),

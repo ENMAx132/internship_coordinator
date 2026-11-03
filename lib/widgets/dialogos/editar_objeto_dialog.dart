@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../models/espacio.dart';
 import '../../models/objeto_inventario.dart';
@@ -22,26 +22,37 @@ class EditarObjetoDialog extends StatefulWidget {
 class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
   late final TextEditingController nombreCtrl;
   late final TextEditingController placaCtrl;
-  late final TextEditingController categoriaCtrl;
-  late final TextEditingController estadoCtrl;
+  late final TextEditingController marcaCtrl;
+  late final TextEditingController respCtrl;
   late final TextEditingController valorCtrl;
-  late final TextEditingController responsableCtrl;
   late String espacioIdSelec;
+  late String categoriaSelec;
+  late String estadoSelec;
 
   @override
   void initState() {
     super.initState();
     nombreCtrl = TextEditingController(text: widget.objeto.nombre);
     placaCtrl = TextEditingController(text: widget.objeto.placa);
-    categoriaCtrl = TextEditingController(text: widget.objeto.categoria);
-    estadoCtrl = TextEditingController(text: widget.objeto.estado);
+    marcaCtrl = TextEditingController(text: widget.objeto.marca);
+    respCtrl = TextEditingController(text: widget.objeto.responsable);
     valorCtrl = TextEditingController(text: widget.objeto.valor.toString());
-    responsableCtrl = TextEditingController(text: widget.objeto.responsable);
     espacioIdSelec = widget.objeto.espacioId;
+    categoriaSelec = widget.objeto.categoria;
+    estadoSelec = widget.objeto.estado;
   }
 
   @override
   Widget build(BuildContext context) {
+    final categorias = <String>{
+      ...ObjetoInventario.categoriasDisponibles,
+      widget.objeto.categoria,
+    };
+    final estados = <String>{
+      ...ObjetoInventario.estadosDisponibles,
+      widget.objeto.estado,
+    };
+
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -57,25 +68,48 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
             ),
             TextField(
               controller: placaCtrl,
-              decoration: const InputDecoration(labelText: 'Código / Placa'),
+              decoration: const InputDecoration(labelText: 'C\u00F3digo / Placa'),
             ),
             TextField(
-              controller: categoriaCtrl,
-              decoration: const InputDecoration(labelText: 'Categoría'),
+              controller: marcaCtrl,
+              decoration: const InputDecoration(labelText: 'Marca'),
             ),
             TextField(
-              controller: estadoCtrl,
-              decoration: const InputDecoration(labelText: 'Estado'),
+              controller: respCtrl,
+              decoration: const InputDecoration(labelText: 'Responsable'),
             ),
             TextField(
               controller: valorCtrl,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Valor'),
+              decoration: const InputDecoration(labelText: 'Precio'),
             ),
-            TextField(
-              controller: responsableCtrl,
-              decoration: const InputDecoration(labelText: 'Responsable'),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: categoriaSelec,
+              decoration: const InputDecoration(labelText: 'Tipo'),
+              items: categorias.map((c) {
+                return DropdownMenuItem(
+                  value: c,
+                  child: Text(c),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => categoriaSelec = val);
+              },
+            ),
+            DropdownButtonFormField<String>(
+              value: estadoSelec,
+              decoration: const InputDecoration(labelText: 'Estado'),
+              items: estados.map((e) {
+                return DropdownMenuItem(
+                  value: e,
+                  child: Text(e),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => estadoSelec = val);
+              },
             ),
             DropdownButtonFormField<String>(
               value: espacioIdSelec,
@@ -111,16 +145,15 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                 placa: placaCtrl.text.trim(),
                 nombre: nombreCtrl.text.trim(),
                 espacioId: espacioIdSelec,
-                categoria: categoriaCtrl.text.trim().isEmpty
-                    ? widget.objeto.categoria
-                    : categoriaCtrl.text.trim(),
-                estado: estadoCtrl.text.trim().isEmpty
-                    ? widget.objeto.estado
-                    : estadoCtrl.text.trim(),
+                categoria: categoriaSelec,
+                estado: estadoSelec,
                 valor: valor ?? widget.objeto.valor,
-                responsable: responsableCtrl.text.trim().isEmpty
+                responsable: respCtrl.text.trim().isEmpty
                     ? widget.objeto.responsable
-                    : responsableCtrl.text.trim(),
+                    : respCtrl.text.trim(),
+                marca: marcaCtrl.text.trim().isEmpty
+                    ? widget.objeto.marca
+                    : marcaCtrl.text.trim(),
                 fechaRegistro: widget.objeto.fechaRegistro,
               ),
             );
