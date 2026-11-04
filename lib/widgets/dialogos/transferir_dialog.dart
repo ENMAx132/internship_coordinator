@@ -33,7 +33,7 @@ class TransferirDialog extends StatelessWidget {
           Text('Mover "${objeto.nombre}" a otra sala:'),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: nuevoEspacioId,
+            initialValue: nuevoEspacioId,
             items: espacios
                 .where((e) => e.id != objeto.espacioId)
                 .map((e) => DropdownMenuItem(

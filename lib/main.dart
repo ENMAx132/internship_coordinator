@@ -36,7 +36,7 @@ class InventarioApp extends StatelessWidget {
         ),
         textSelectionTheme: TextSelectionThemeData(
           cursorColor: const Color(0xFF6366F1),
-          selectionColor: const Color(0xFF6366F1).withOpacity(0.2),
+          selectionColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
           selectionHandleColor: const Color(0xFF6366F1),
         ),
         chipTheme: baseTheme.chipTheme.copyWith(

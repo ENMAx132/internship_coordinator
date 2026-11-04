@@ -14,7 +14,6 @@ class AjustesScreen extends StatefulWidget {
 
 class _AjustesScreenState extends State<AjustesScreen> {
   void _reordenar(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) newIndex -= 1;
     final apartado = widget.apartados.removeAt(oldIndex);
     widget.apartados.insert(newIndex, apartado);
     apartadoInicioId.value = widget.apartados.first.id;
@@ -46,7 +45,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -119,7 +118,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               itemCount: widget.apartados.length,
               buildDefaultDragHandles: false,
-              onReorder: _reordenar,
+              onReorderItem: _reordenar,
               itemBuilder: (context, index) {
                 return _construirOpcion(widget.apartados[index], index);
               },
@@ -148,8 +147,8 @@ class _AjustesScreenState extends State<AjustesScreen> {
           boxShadow: [
             BoxShadow(
               color: esInicio
-                  ? const Color(0xFF6366F1).withOpacity(0.12)
-                  : Colors.black.withOpacity(0.03),
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.12)
+                  : Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),

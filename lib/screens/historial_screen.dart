@@ -81,7 +81,7 @@ class HistorialScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -143,10 +143,10 @@ class HistorialScreen extends StatelessWidget {
   }
 
   Widget _construirVacio() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           Text('🕘', style: TextStyle(fontSize: 48)),
           SizedBox(height: 10),
           Text(

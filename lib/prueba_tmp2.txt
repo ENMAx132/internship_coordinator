@@ -1,3 +1,0 @@
-emoji: '🏢',
-texto: 'Áreas de la oficina',
-negrita: 'Mantenimiento & Operativo',

@@ -35,8 +35,8 @@ class SectorCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? const Color(0xFF6366F1).withOpacity(0.12)
-                  : Colors.black.withOpacity(0.03),
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.12)
+                  : Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

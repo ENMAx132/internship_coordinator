@@ -59,7 +59,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: apartadoIdSelec,
+              initialValue: apartadoIdSelec,
               decoration: const InputDecoration(labelText: 'Apartado'),
               items: widget.apartados.map((e) {
                 return DropdownMenuItem(

@@ -76,7 +76,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: categoriaSelec,
+              initialValue: categoriaSelec,
               decoration: const InputDecoration(labelText: 'Tipo'),
               items: ObjetoInventario.categoriasDisponibles.map((c) {
                 return DropdownMenuItem(
@@ -89,7 +89,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
               },
             ),
             DropdownButtonFormField<String>(
-              value: estadoSelec,
+              initialValue: estadoSelec,
               decoration: const InputDecoration(labelText: 'Estado'),
               items: ObjetoInventario.estadosDisponibles.map((e) {
                 return DropdownMenuItem(
@@ -102,7 +102,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
               },
             ),
             DropdownButtonFormField<String>(
-              value: espacioIdSelec,
+              initialValue: espacioIdSelec,
               decoration: const InputDecoration(labelText: 'Espacio / Sala'),
               items: widget.espacios.map((e) {
                 return DropdownMenuItem(

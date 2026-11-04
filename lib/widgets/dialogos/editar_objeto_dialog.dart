@@ -86,7 +86,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: categoriaSelec,
+              initialValue: categoriaSelec,
               decoration: const InputDecoration(labelText: 'Tipo'),
               items: categorias.map((c) {
                 return DropdownMenuItem(
@@ -99,7 +99,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               },
             ),
             DropdownButtonFormField<String>(
-              value: estadoSelec,
+              initialValue: estadoSelec,
               decoration: const InputDecoration(labelText: 'Estado'),
               items: estados.map((e) {
                 return DropdownMenuItem(
@@ -112,7 +112,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               },
             ),
             DropdownButtonFormField<String>(
-              value: espacioIdSelec,
+              initialValue: espacioIdSelec,
               decoration: const InputDecoration(labelText: 'Espacio / Sala'),
               items: widget.espacios.map((e) {
                 return DropdownMenuItem(
