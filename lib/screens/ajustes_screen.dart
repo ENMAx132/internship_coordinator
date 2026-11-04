@@ -13,19 +13,13 @@ class AjustesScreen extends StatefulWidget {
 }
 
 class _AjustesScreenState extends State<AjustesScreen> {
-  late String _seleccionado;
-
-  @override
-  void initState() {
-    super.initState();
-    _seleccionado = apartadoInicioId.value;
-  }
-
-  void _seleccionar(Apartado apartado) {
-    setState(() {
-      _seleccionado = apartado.id;
-    });
-    apartadoInicioId.value = apartado.id;
+  void _reordenar(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final apartado = widget.apartados.removeAt(oldIndex);
+    widget.apartados.insert(newIndex, apartado);
+    apartadoInicioId.value = widget.apartados.first.id;
+    apartadosOrdenVersion.value++;
+    setState(() {});
   }
 
   @override
@@ -38,103 +32,122 @@ class _AjustesScreenState extends State<AjustesScreen> {
         ),
         title: const Text('Ajustes'),
       ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: const Icon(
-                    Icons.settings_outlined,
-                    color: Color(0xFF6366F1),
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Personaliza tu Inicio',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: Color(0xFF6366F1),
+                          size: 26,
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Elige el apartado que quieres ver al abrir la app.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF64748B),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Personaliza tu Inicio',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Arrastra para ordenar. El primero será el apartado '
+                                  'que verás al abrir la app.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Orden de los apartados',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Arrastra desde el ícono para cambiar el orden. '
+                      'También puedes deslizar a los lados en Inicio.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                ),
+                const SizedBox(height: 12),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Apartado de inicio',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
+          Expanded(
+            child: ReorderableListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              itemCount: widget.apartados.length,
+              buildDefaultDragHandles: false,
+              onReorder: _reordenar,
+              itemBuilder: (context, index) {
+                return _construirOpcion(widget.apartados[index], index);
+              },
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'También puedes deslizar a los lados en Inicio para cambiar entre apartados.',
-            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 12),
-          ...widget.apartados.map(_construirOpcion),
         ],
       ),
     );
   }
 
-  Widget _construirOpcion(Apartado apartado) {
-    final seleccionado = _seleccionado == apartado.id;
-    return GestureDetector(
-      onTap: () => _seleccionar(apartado),
+  Widget _construirOpcion(Apartado apartado, int index) {
+    final esInicio = index == 0;
+    return Padding(
+      key: ValueKey(apartado.id),
+      padding: const EdgeInsets.only(bottom: 10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: seleccionado ? const Color(0xFF6366F1) : Colors.transparent,
+            color: esInicio ? const Color(0xFF6366F1) : Colors.transparent,
             width: 1.6,
           ),
           boxShadow: [
             BoxShadow(
-              color: seleccionado
+              color: esInicio
                   ? const Color(0xFF6366F1).withOpacity(0.12)
                   : Colors.black.withOpacity(0.03),
               blurRadius: 10,
@@ -163,13 +176,42 @@ class _AjustesScreenState extends State<AjustesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    apartado.nombre,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          apartado.nombre,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                      if (esInicio) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Inicio',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF6366F1),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -184,12 +226,18 @@ class _AjustesScreenState extends State<AjustesScreen> {
                 ],
               ),
             ),
-            Icon(
-              seleccionado ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: seleccionado
-                  ? const Color(0xFF6366F1)
-                  : const Color(0xFFCBD5E1),
-              size: 22,
+            ReorderableDragStartListener(
+              index: index,
+              child: Container(
+                width: 36,
+                height: 44,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.drag_indicator,
+                  color: Color(0xFF94A3B8),
+                  size: 22,
+                ),
+              ),
             ),
           ],
         ),

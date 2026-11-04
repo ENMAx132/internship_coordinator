@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   leading: const CircleAvatar(
                     backgroundColor: Color(0xFFEEF2FF),
                     child:
-                        Icon(Icons.grid_view_rounded, color: Color(0xFF6366F1)),
+                    Icon(Icons.grid_view_rounded, color: Color(0xFF6366F1)),
                   ),
                   title: const Text(
                     'Nuevo Espacio',
@@ -229,12 +229,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: ValueListenableBuilder<String>(
-              valueListenable: apartadoInicioId,
-              builder: (context, id, _) {
+            child: AnimatedBuilder(
+              animation: Listenable.merge([
+                apartadoInicioId,
+                apartadosOrdenVersion,
+              ]),
+              builder: (context, _) {
                 return _InicioApartados(
                   apartados: _apartados,
-                  apartadoInicialId: id,
+                  apartadoInicialId: apartadoInicioId.value,
+                  ordenVersion: apartadosOrdenVersion.value,
                   onRefresh: () {
                     if (mounted) setState(() {});
                   },
@@ -319,26 +323,26 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _apartados.isEmpty
                 ? _construirApartadoVacio()
                 : GridView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 24),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      childAspectRatio: 0.95,
-                    ),
-                    itemCount: _apartados.length,
-                    itemBuilder: (context, index) {
-                      final apartado = _apartados[index];
-                      return ApartadoCard(
-                        apartado: apartado,
-                        espacios: _espaciosDe(apartado),
-                        objetos: _objetosDe(apartado),
-                        onTap: () => _abrirApartado(apartado),
-                      );
-                    },
-                  ),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 24),
+              gridDelegate:
+              const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 0.95,
+              ),
+              itemCount: _apartados.length,
+              itemBuilder: (context, index) {
+                final apartado = _apartados[index];
+                return ApartadoCard(
+                  apartado: apartado,
+                  espacios: _espaciosDe(apartado),
+                  objetos: _objetosDe(apartado),
+                  onTap: () => _abrirApartado(apartado),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -559,11 +563,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class _InicioApartados extends StatefulWidget {
   final List<Apartado> apartados;
   final String apartadoInicialId;
+  final int ordenVersion;
   final VoidCallback onRefresh;
 
   const _InicioApartados({
     required this.apartados,
     required this.apartadoInicialId,
+    required this.ordenVersion,
     required this.onRefresh,
   });
 
@@ -585,7 +591,8 @@ class _InicioApartadosState extends State<_InicioApartados> {
   @override
   void didUpdateWidget(covariant _InicioApartados oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.apartadoInicialId != widget.apartadoInicialId) {
+    if (oldWidget.apartadoInicialId != widget.apartadoInicialId ||
+        oldWidget.ordenVersion != widget.ordenVersion) {
       final nuevoIndice = _indiceInicial();
       if (nuevoIndice != _pagina) {
         setState(() => _pagina = nuevoIndice);
@@ -606,7 +613,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
 
   int _indiceInicial() {
     final indice = widget.apartados.indexWhere(
-      (a) => a.id == widget.apartadoInicialId,
+          (a) => a.id == widget.apartadoInicialId,
     );
     return indice < 0 ? 0 : indice;
   }
@@ -680,7 +687,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
 
   Widget _construirPagina(Apartado apartado) {
     final espacios =
-        espaciosIniciales.where((e) => e.apartadoId == apartado.id).toList();
+    espaciosIniciales.where((e) => e.apartadoId == apartado.id).toList();
     final ids = espacios.map((e) => e.id).toSet();
     final totalObjetos =
         objetosIniciales.where((o) => ids.contains(o.espacioId)).length;
@@ -787,29 +794,29 @@ class _InicioApartadosState extends State<_InicioApartados> {
           child: espacios.isEmpty
               ? _construirVacio(apartado)
               : GridView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 24),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 1.15,
-                  ),
-                  itemCount: espacios.length,
-                  itemBuilder: (context, index) {
-                    final espacio = espacios[index];
-                    final conteo = objetosIniciales
-                        .where((o) => o.espacioId == espacio.id)
-                        .length;
-                    return SectorCard(
-                      espacio: espacio,
-                      conteo: conteo,
-                      isSelected: false,
-                      onTap: () => _abrirEspacio(espacio),
-                      onLongPress: () => _abrirApartado(apartado),
-                    );
-                  },
-                ),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 24),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 1.15,
+            ),
+            itemCount: espacios.length,
+            itemBuilder: (context, index) {
+              final espacio = espacios[index];
+              final conteo = objetosIniciales
+                  .where((o) => o.espacioId == espacio.id)
+                  .length;
+              return SectorCard(
+                espacio: espacio,
+                conteo: conteo,
+                isSelected: false,
+                onTap: () => _abrirEspacio(espacio),
+                onLongPress: () => _abrirApartado(apartado),
+              );
+            },
+          ),
         ),
       ],
     );
