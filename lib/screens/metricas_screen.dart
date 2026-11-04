@@ -1,10 +1,12 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../data/app_settings.dart';
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import 'ajustes_screen.dart';
+import 'ver_revision_screen.dart';
 import 'ver_todos_objetos_screen.dart';
 
 class MetricasScreen extends StatefulWidget {
@@ -53,6 +55,14 @@ class _MetricasScreenState extends State<MetricasScreen> {
   double _valorDe(Apartado apartado) {
     return _objetosDe(apartado)
         .fold(0.0, (total, objeto) => total + objeto.valor);
+  }
+
+  void _reordenarApartados(int oldIndex, int newIndex) {
+    final apartado = widget.apartados.removeAt(oldIndex);
+    widget.apartados.insert(newIndex, apartado);
+    apartadoInicioId.value = widget.apartados.first.id;
+    apartadosOrdenVersion.value++;
+    setState(() {});
   }
 
   @override
@@ -186,6 +196,15 @@ class _MetricasScreenState extends State<MetricasScreen> {
                 icono: Icons.build_outlined,
                 etiqueta: 'En revisión',
                 valor: '$_objetosEnRevision',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VerRevisionScreen(objetos: _objetos),
+                    ),
+                  );
+                  setState(() {});
+                },
               ),
             ),
           ],
@@ -200,8 +219,22 @@ class _MetricasScreenState extends State<MetricasScreen> {
               color: Color(0xFF0F172A),
             ),
           ),
+          const SizedBox(height: 4),
+          const Text(
+            'Arrastra desde el ícono para cambiar el orden de los apartados en Inicio.',
+            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+          ),
           const SizedBox(height: 10),
-          ...widget.apartados.map(_construirApartado),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: widget.apartados.length,
+            onReorderItem: _reordenarApartados,
+            itemBuilder: (context, index) {
+              return _construirApartado(widget.apartados[index], index);
+            },
+          ),
         ],
       ],
     );
@@ -303,10 +336,11 @@ class _MetricasScreenState extends State<MetricasScreen> {
     );
   }
 
-  Widget _construirApartado(Apartado apartado) {
+  Widget _construirApartado(Apartado apartado, int index) {
     final espacios = _espaciosDe(apartado);
     final objetos = _objetosDe(apartado);
     return GestureDetector(
+      key: ValueKey(apartado.id),
       onTap: () {
         setState(() => _apartadoSeleccionadoId = apartado.id);
       },
@@ -345,6 +379,20 @@ class _MetricasScreenState extends State<MetricasScreen> {
                   Icons.arrow_forward_ios,
                   size: 12,
                   color: Color(0xFF94A3B8),
+                ),
+                const SizedBox(width: 4),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Container(
+                    width: 30,
+                    height: 32,
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.drag_indicator,
+                      color: Color(0xFF94A3B8),
+                      size: 22,
+                    ),
+                  ),
                 ),
               ],
             ),
