@@ -209,10 +209,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EspacioScreen(
-          espacio: espacio,
-          apartados: widget.apartados,
-        ),
+        builder: (_) => EspacioScreen(espacio: espacio),
       ),
     ).then((_) {
       if (mounted) setState(() {});

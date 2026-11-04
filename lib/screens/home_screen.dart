@@ -634,10 +634,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EspacioScreen(
-          espacio: espacio,
-          apartados: widget.apartados,
-        ),
+        builder: (_) => EspacioScreen(espacio: espacio),
       ),
     ).then((_) => widget.onRefresh());
   }

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../data/inventario_data.dart';
-import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
-import '../screens/celebration_screen.dart';
 import '../widgets/dialogos/editar_objeto_dialog.dart';
 import '../widgets/dialogos/transferir_dialog.dart';
 import '../widgets/item_tile.dart';
@@ -12,10 +10,8 @@ import '../widgets/dialogos/crear_objeto_dialog.dart';
 
 class EspacioScreen extends StatefulWidget {
   final Espacio espacio;
-  final List<Apartado> apartados;
 
-  const EspacioScreen(
-      {super.key, required this.espacio, required this.apartados});
+  const EspacioScreen({super.key, required this.espacio});
 
   @override
   State<EspacioScreen> createState() => _EspacioScreenState();
@@ -199,21 +195,9 @@ class _EspacioScreenState extends State<EspacioScreen> {
         espacios: [widget.espacio],
         placaInicial: 'ACT-00${_objetos.length + 1}',
         onGuardar: (obj) {
-          final esPrimer = _objetos.isEmpty;
           setState(() {
             objetosIniciales.add(obj);
           });
-          if (esPrimer) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CelebrationScreen(
-                  objeto: obj,
-                  apartados: widget.apartados,
-                ),
-              ),
-            );
-          }
         },
       ),
     );
