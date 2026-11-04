@@ -12,9 +12,9 @@ class VerTodosObjetosScreen extends StatefulWidget {
 }
 
 class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
-  String _tipoSeleccionado = 'Todos';
-  String _marcaSeleccionada = 'Todos';
-  String _estadoSeleccionado = 'Todos';
+  String _tipoSeleccionado = 'Tipo';
+  String _marcaSeleccionada = 'Marca';
+  String _estadoSeleccionado = 'Estado';
   final TextEditingController _precioMinCtrl = TextEditingController();
   final TextEditingController _precioMaxCtrl = TextEditingController();
   final TextEditingController _filtroTextoCtrl = TextEditingController();
@@ -46,13 +46,13 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
           o.marca.toLowerCase().contains(q))
           .toList();
     }
-    if (_tipoSeleccionado != 'Todos') {
+    if (_tipoSeleccionado != 'Tipo') {
       lista = lista.where((o) => o.categoria == _tipoSeleccionado).toList();
     }
-    if (_marcaSeleccionada != 'Todos') {
+    if (_marcaSeleccionada != 'Marca') {
       lista = lista.where((o) => o.marca == _marcaSeleccionada).toList();
     }
-    if (_estadoSeleccionado != 'Todos') {
+    if (_estadoSeleccionado != 'Estado') {
       lista = lista.where((o) => o.estado == _estadoSeleccionado).toList();
     }
     final min = double.tryParse(_precioMinCtrl.text.replaceAll(',', '.'));
@@ -115,19 +115,19 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                   children: [
                     _construirFiltro(
                       valor: _tipoSeleccionado,
-                      opciones: <String>['Todos', ...ObjetoInventario.categoriasDisponibles],
+                      opciones: <String>['Tipo', ...ObjetoInventario.categoriasDisponibles],
                       onCambio: (v) => setState(() => _tipoSeleccionado = v!),
                     ),
                     const SizedBox(width: 8),
                     _construirFiltro(
                       valor: _marcaSeleccionada,
-                      opciones: <String>['Todos', ..._marcasDisponibles],
+                      opciones: <String>['Marca', ..._marcasDisponibles],
                       onCambio: (v) => setState(() => _marcaSeleccionada = v!),
                     ),
                     const SizedBox(width: 8),
                     _construirFiltro(
                       valor: _estadoSeleccionado,
-                      opciones: <String>['Todos', ...ObjetoInventario.estadosDisponibles],
+                      opciones: <String>['Estado', ...ObjetoInventario.estadosDisponibles],
                       onCambio: (v) => setState(() => _estadoSeleccionado = v!),
                     ),
                   ],

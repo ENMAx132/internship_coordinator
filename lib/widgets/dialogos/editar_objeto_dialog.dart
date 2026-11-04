@@ -7,12 +7,14 @@ class EditarObjetoDialog extends StatefulWidget {
   final ObjetoInventario objeto;
   final List<Espacio> espacios;
   final ValueChanged<ObjetoInventario> onActualizar;
+  final ValueChanged<ObjetoInventario> onEliminar;
 
   const EditarObjetoDialog({
     super.key,
     required this.objeto,
     required this.espacios,
     required this.onActualizar,
+    required this.onEliminar,
   });
 
   @override
@@ -128,6 +130,13 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            widget.onEliminar(widget.objeto);
+          },
+          child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancelar'),

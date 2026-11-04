@@ -114,6 +114,52 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _confirmarEliminarApartado(Apartado apartado) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Eliminar Apartado',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '¿Seguro que quieres eliminar "${apartado.nombre}"? Se borrarán también sus espacios y objetos.',
+          style: const TextStyle(color: Color(0xFF475569)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _apartados.removeWhere((a) => a.id == apartado.id);
+                final ids = espaciosIniciales
+                    .where((e) => e.apartadoId == apartado.id)
+                    .map((e) => e.id)
+                    .toSet();
+                espaciosIniciales
+                    .removeWhere((e) => e.apartadoId == apartado.id);
+                objetosIniciales
+                    .removeWhere((o) => ids.contains(o.espacioId));
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Apartado eliminado correctamente.'),
+                ),
+              );
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _mostrarMenuAgregar() {
     showModalBottomSheet(
       context: context,
@@ -335,11 +381,14 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: _apartados.length,
               itemBuilder: (context, index) {
                 final apartado = _apartados[index];
-                return ApartadoCard(
-                  apartado: apartado,
-                  espacios: _espaciosDe(apartado),
-                  objetos: _objetosDe(apartado),
-                  onTap: () => _abrirApartado(apartado),
+                return GestureDetector(
+                  onLongPress: () => _confirmarEliminarApartado(apartado),
+                  child: ApartadoCard(
+                    apartado: apartado,
+                    espacios: _espaciosDe(apartado),
+                    objetos: _objetosDe(apartado),
+                    onTap: () => _abrirApartado(apartado),
+                  ),
                 );
               },
             ),

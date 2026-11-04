@@ -18,7 +18,6 @@ class ObjetoInventario {
     'En uso',
     'En revisi\u00F3n',
     'Da\u00F1ado',
-    'Mantenimiento',
   ];
 
   static const List<String> categoriasDisponibles = [

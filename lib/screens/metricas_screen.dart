@@ -37,7 +37,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
 
   int get _objetosEnRevision {
     return _objetos
-        .where((o) => o.estado.toLowerCase() == 'mantenimiento')
+        .where((o) => o.estado.toLowerCase() == 'en revisión')
         .length;
   }
 

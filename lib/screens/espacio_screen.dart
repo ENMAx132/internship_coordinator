@@ -238,6 +238,14 @@ class _EspacioScreenState extends State<EspacioScreen> {
             }
           });
         },
+        onEliminar: (o) {
+          setState(() {
+            objetosIniciales.removeWhere((item) => item.id == o.id);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Objeto eliminado correctamente.')),
+          );
+        },
       ),
     );
   }
