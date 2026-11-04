@@ -88,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onGuardar: (objeto) {
           setState(() {
             objetosIniciales.add(objeto);
+            notificarCambioInventario();
           });
         },
       ),
@@ -146,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     .removeWhere((e) => e.apartadoId == apartado.id);
                 objetosIniciales
                     .removeWhere((o) => ids.contains(o.espacioId));
+                notificarCambioInventario();
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

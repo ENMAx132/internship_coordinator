@@ -30,45 +30,50 @@ class HistorialScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final objetos = [...objetosIniciales]
-      ..sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
+    return ValueListenableBuilder<int>(
+      valueListenable: inventarioVersion,
+      builder: (context, _, __) {
+        final objetos = [...objetosIniciales]
+          ..sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Historial',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E293B),
-              letterSpacing: -0.5,
-            ),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Historial',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E293B),
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Objetos agregados y su fecha de registro',
+                style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: objetos.isEmpty
+                    ? _construirVacio()
+                    : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: objetos.length,
+                        itemBuilder: (context, index) {
+                          final objeto = objetos[index];
+                          final espacio = _espacioDe(objeto);
+                          return _construirRegistro(objeto, espacio);
+                        },
+                      ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          const Text(
-            'Objetos agregados y su fecha de registro',
-            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: objetos.isEmpty
-                ? _construirVacio()
-                : ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 24),
-                    itemCount: objetos.length,
-                    itemBuilder: (context, index) {
-                      final objeto = objetos[index];
-                      final espacio = _espacioDe(objeto);
-                      return _construirRegistro(objeto, espacio);
-                    },
-                  ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

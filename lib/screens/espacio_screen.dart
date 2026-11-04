@@ -197,6 +197,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
         onGuardar: (obj) {
           setState(() {
             objetosIniciales.add(obj);
+            notificarCambioInventario();
           });
         },
       ),
@@ -214,6 +215,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
         onTransferir: (nuevoEspacioId) {
           setState(() {
             obj.espacioId = nuevoEspacioId;
+            notificarCambioInventario();
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Activo transferido exitosamente.')),
@@ -235,12 +237,14 @@ class _EspacioScreenState extends State<EspacioScreen> {
                 objetosIniciales.indexWhere((item) => item.id == o.id);
             if (index != -1) {
               objetosIniciales[index] = o;
+              notificarCambioInventario();
             }
           });
         },
         onEliminar: (o) {
           setState(() {
             objetosIniciales.removeWhere((item) => item.id == o.id);
+            notificarCambioInventario();
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Objeto eliminado correctamente.')),

@@ -242,6 +242,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                 espaciosIniciales.indexWhere((item) => item.id == e.id);
             if (index != -1) {
               espaciosIniciales[index] = e;
+              notificarCambioInventario();
             }
           });
           ScaffoldMessenger.of(context).showSnackBar(
@@ -252,6 +253,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
           setState(() {
             espaciosIniciales.removeWhere((item) => item.id == e.id);
             objetosIniciales.removeWhere((item) => item.espacioId == e.id);
+            notificarCambioInventario();
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Espacio eliminado correctamente.')),
