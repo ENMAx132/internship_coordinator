@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../data/inventario_data.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
+import '../widgets/icono_widget.dart';
 
 class VerTodosObjetosScreen extends StatefulWidget {
   const VerTodosObjetosScreen({super.key});
@@ -231,8 +232,12 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               color: Color(0xFFF1F5F9),
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
-            child: Center(
-              child: Text(espacio.emoji, style: const TextStyle(fontSize: 20)),
+            child: IconoWidget(
+              imagePath: o.imagePath ?? espacio.imagePath,
+              emoji: espacio.emoji,
+              fontSize: 20,
+              size: 42,
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           const SizedBox(width: 12),

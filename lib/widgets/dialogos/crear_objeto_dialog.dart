@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/espacio.dart';
 import '../../models/objeto_inventario.dart';
+import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearObjetoDialog extends StatefulWidget {
   final List<Espacio> espacios;
@@ -28,6 +29,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late String espacioIdSelec;
   late String categoriaSelec;
   late String estadoSelec;
+  late String? imagePathSelec;
 
   int _paso = 0;
 
@@ -136,6 +138,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         responsable:
             respCtrl.text.trim().isEmpty ? 'Sin asignar' : respCtrl.text.trim(),
         marca: marcaCtrl.text.trim(),
+        imagePath: imagePathSelec,
       ),
     );
     Navigator.pop(context);
@@ -150,12 +153,13 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         'Registrar Objeto',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -194,7 +198,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
               duration: const Duration(milliseconds: 200),
               child: SizedBox(
                 key: ValueKey(_paso),
-                height: 96,
+                height: _esUltimoPaso ? 320 : 96,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -211,7 +215,8 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -304,18 +309,31 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           },
         );
       default:
-        return DropdownButtonFormField<String>(
-          initialValue: espacioIdSelec,
-          decoration: const InputDecoration(labelText: 'Espacio / Sala'),
-          items: widget.espacios.map((e) {
-            return DropdownMenuItem(
-              value: e.id,
-              child: Text('${e.emoji} ${e.nombre}'),
-            );
-          }).toList(),
-          onChanged: (val) {
-            if (val != null) setState(() => espacioIdSelec = val);
-          },
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: espacioIdSelec,
+              decoration: const InputDecoration(labelText: 'Espacio / Sala'),
+              items: widget.espacios.map((e) {
+                return DropdownMenuItem(
+                  value: e.id,
+                  child: Text('${e.emoji} ${e.nombre}'),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => espacioIdSelec = val);
+              },
+            ),
+            const SizedBox(height: 12),
+            SelectorImagenIcono(
+              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '',
+              imagePath: imagePathSelec,
+              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              onEmojiChange: (e) => setState(() {}),
+            ),
+          ],
         );
     }
   }

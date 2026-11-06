@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/inventario_data.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
+import '../widgets/icono_widget.dart';
+import '../widgets/dialogos/editar_objeto_dialog.dart';
 
 class VerRevisionScreen extends StatefulWidget {
   final List<ObjetoInventario> objetos;
@@ -51,6 +53,14 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
         }
       }
     });
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    final dia = fecha.day.toString().padLeft(2, '0');
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final hora = fecha.hour.toString().padLeft(2, '0');
+    final minuto = fecha.minute.toString().padLeft(2, '0');
+    return '$dia/$mes/${fecha.year} $hora:$minuto';
   }
 
   Espacio _espacioDe(String id) {
@@ -204,8 +214,12 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
               color: Color(0xFFF1F5F9),
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
-            child: Center(
-              child: Text(espacio.emoji, style: const TextStyle(fontSize: 20)),
+            child: IconoWidget(
+              imagePath: o.imagePath ?? espacio.imagePath,
+              emoji: espacio.emoji,
+              fontSize: 20,
+              size: 42,
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           const SizedBox(width: 12),
@@ -225,7 +239,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${o.placa} • ${o.categoria} • ${o.marca}',
+                  '${o.categoria} • ${o.marca}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -236,6 +250,16 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                 const SizedBox(height: 3),
                 Text(
                   espacio.nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _formatearFecha(o.fechaEnRevision),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

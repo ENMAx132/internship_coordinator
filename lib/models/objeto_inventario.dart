@@ -1,4 +1,4 @@
-﻿/// Modelo de datos para un Objeto del Inventario
+/// Modelo de datos para un Objeto del Inventario
 class ObjetoInventario {
   final String id;
   final String placa;
@@ -8,8 +8,10 @@ class ObjetoInventario {
   final String estado;
   final double valor;
   final String responsable;
+  final String? imagePath;
   final String marca;
   final DateTime fechaRegistro;
+  final DateTime fechaEnRevision;
 
   static const List<String> estadosDisponibles = [
     'Excelente',
@@ -45,6 +47,10 @@ class ObjetoInventario {
     required this.responsable,
     String? marca,
     DateTime? fechaRegistro,
-  })  : marca = marca ?? '',
-        fechaRegistro = fechaRegistro ?? DateTime.now();
+    DateTime? fechaEnRevision,
+    String? imagePath,
+  })  : imagePath = imagePath ?? '',
+        marca = marca ?? '',
+        fechaRegistro = fechaRegistro ?? DateTime.now(),
+        fechaEnRevision = fechaEnRevision ?? DateTime.now();
 }

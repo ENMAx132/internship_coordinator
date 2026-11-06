@@ -8,6 +8,7 @@ import '../widgets/apartado_card.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/dialogos/crear_objeto_dialog.dart';
+import '../widgets/icono_widget.dart';
 import '../widgets/sector_card.dart';
 import 'apartado_screen.dart';
 import 'espacio_screen.dart';
@@ -90,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
             objetosIniciales.add(objeto);
             notificarCambioInventario();
           });
+          _mostrarAviso('Objeto agregado correctamente.');
         },
       ),
     );
@@ -766,9 +768,10 @@ class _InicioApartadosState extends State<_InicioApartados> {
                     color: const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(
-                    apartado.icono,
-                    style: const TextStyle(fontSize: 30),
+                  child: IconoWidget(
+                    imagePath: apartado.imagePath,
+                    emoji: apartado.icono,
+                    fontSize: 30,
                   ),
                 ),
                 const SizedBox(width: 12),

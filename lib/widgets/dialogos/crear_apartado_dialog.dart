@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/apartado.dart';
+import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearApartadoDialog extends StatefulWidget {
   final ValueChanged<Apartado> onCrear;
@@ -14,6 +15,7 @@ class CrearApartadoDialog extends StatefulWidget {
 class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   final nombreCtrl = TextEditingController();
   final descCtrl = TextEditingController();
+  String? imagePathSelec;
   String emojiSelec = '🏢';
   final emojis = [
     '🏢',
@@ -90,6 +92,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
             ? 'Sin nombre'
             : nombreCtrl.text.trim(),
         icono: emojiSelec,
+        imagePath: imagePathSelec,
         descripcion: descCtrl.text.trim().isEmpty
             ? 'Nuevo apartado'
             : descCtrl.text.trim(),
@@ -107,12 +110,13 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
         'Nuevo Apartado',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -151,7 +155,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
               duration: const Duration(milliseconds: 200),
               child: SizedBox(
                 key: ValueKey(_paso),
-                height: _paso == 0 ? 150 : 96,
+                height: _paso == 0 ? 320 : 96,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -163,12 +167,13 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Expanded(child: _construirCampo()),
+                    _construirCampo(),
                   ],
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -199,20 +204,13 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   Widget _construirCampo() {
     switch (_paso) {
       case 0:
-        return SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: emojis.map((e) {
-              return ChoiceChip(
-                label: Text(e, style: const TextStyle(fontSize: 18)),
-                selected: emojiSelec == e,
-                onSelected: (sel) {
-                  if (sel) setState(() => emojiSelec = e);
-                },
-              );
-            }).toList(),
-          ),
+        return SelectorImagenIcono(
+          emoji: emojiSelec,
+          imagePath: imagePathSelec,
+          emojis: emojis,
+          size: 104,
+          onImagePicked: (p) => setState(() => imagePathSelec = p),
+          onEmojiChange: (e) => setState(() => emojiSelec = e),
         );
       case 1:
         return TextField(

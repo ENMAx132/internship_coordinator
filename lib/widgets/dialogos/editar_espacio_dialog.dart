@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/apartado.dart';
 import '../../models/espacio.dart';
+import '../../widgets/seleccionar_imagen_icono.dart';
 
 class EditarEspacioDialog extends StatefulWidget {
   final Espacio espacio;
@@ -25,6 +26,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
   late final TextEditingController nombreCtrl;
   late final TextEditingController descCtrl;
   late String emojiSelec;
+  late String? imagePathSelec;
   late final List<String> emojis;
   late String apartadoIdSelec;
 
@@ -34,6 +36,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     nombreCtrl = TextEditingController(text: widget.espacio.nombre);
     descCtrl = TextEditingController(text: widget.espacio.descripcion);
     emojiSelec = widget.espacio.emoji;
+    imagePathSelec = widget.espacio.imagePath;
     apartadoIdSelec = widget.espacio.apartadoId;
     emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
   }
@@ -48,17 +51,13 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Wrap(
-              spacing: 8,
-              children: emojis.map((e) {
-                return ChoiceChip(
-                  label: Text(e, style: const TextStyle(fontSize: 18)),
-                  selected: emojiSelec == e,
-                  onSelected: (sel) {
-                    if (sel) setState(() => emojiSelec = e);
-                  },
-                );
-              }).toList(),
+            SelectorImagenIcono(
+              emoji: emojiSelec,
+              imagePath: imagePathSelec,
+              emojis: emojis,
+              size: 104,
+              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              onEmojiChange: (e) => setState(() => emojiSelec = e),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -113,6 +112,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
                       ? 'Área de trabajo'
                       : descCtrl.text.trim(),
                   emoji: emojiSelec,
+                  imagePath: imagePathSelec,
                   apartadoId: apartadoIdSelec,
                 ),
               );

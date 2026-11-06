@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
+import '../widgets/icono_widget.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import 'ajustes_screen.dart';
@@ -363,7 +364,11 @@ class _MetricasScreenState extends State<MetricasScreen> {
           children: [
             Row(
               children: [
-                Text(apartado.icono, style: const TextStyle(fontSize: 22)),
+                IconoWidget(
+                  imagePath: apartado.imagePath,
+                  emoji: apartado.icono,
+                  fontSize: 22,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

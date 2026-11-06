@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
+import 'icono_widget.dart';
 
 class ItemTile extends StatelessWidget {
   final ObjetoInventario objeto;
@@ -43,11 +44,12 @@ class ItemTile extends StatelessWidget {
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
-                child: Text(
-                  espacioAsoc.emoji,
-                  style: const TextStyle(fontSize: 20),
-                ),
+              child: IconoWidget(
+                imagePath: objeto.imagePath ?? espacioAsoc.imagePath,
+                emoji: espacioAsoc.emoji,
+                fontSize: 20,
+                size: 42,
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             const SizedBox(width: 12),

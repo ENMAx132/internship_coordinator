@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/inventario_data.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
+import '../widgets/icono_widget.dart';
 import '../widgets/dialogos/editar_objeto_dialog.dart';
 import '../widgets/dialogos/transferir_dialog.dart';
 import '../widgets/item_tile.dart';
@@ -35,12 +36,25 @@ class _EspacioScreenState extends State<EspacioScreen> {
               color: Color(0xFF0F172A), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          '${widget.espacio.emoji} ${widget.espacio.nombre}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Color(0xFF0F172A),
+        title: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Row(
+            children: [
+              IconoWidget(
+                imagePath: widget.espacio.imagePath,
+                emoji: widget.espacio.emoji,
+                fontSize: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.espacio.nombre,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -78,9 +92,10 @@ class _EspacioScreenState extends State<EspacioScreen> {
                         color: const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Text(
-                        widget.espacio.emoji,
-                        style: const TextStyle(fontSize: 30),
+                      child: IconoWidget(
+                        imagePath: widget.espacio.imagePath,
+                        emoji: widget.espacio.emoji,
+                        fontSize: 30,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -199,6 +214,9 @@ class _EspacioScreenState extends State<EspacioScreen> {
             objetosIniciales.add(obj);
             notificarCambioInventario();
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Objeto agregado correctamente.')),
+          );
         },
       ),
     );

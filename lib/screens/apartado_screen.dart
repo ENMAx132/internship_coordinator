@@ -6,6 +6,7 @@ import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import '../widgets/dialogos/editar_espacio_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
+import '../widgets/icono_widget.dart';
 import '../widgets/sector_card.dart';
 import 'espacio_screen.dart';
 
@@ -73,9 +74,10 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         color: const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Text(
-                        widget.apartado.icono,
-                        style: const TextStyle(fontSize: 30),
+                      child: IconoWidget(
+                        imagePath: widget.apartado.imagePath,
+                        emoji: widget.apartado.icono,
+                        fontSize: 30,
                       ),
                     ),
                     const SizedBox(width: 12),

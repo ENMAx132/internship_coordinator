@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/apartado.dart';
+import 'icono_widget.dart';
 
 class ApartadoCard extends StatelessWidget {
   final Apartado apartado;
@@ -48,9 +49,10 @@ class ApartadoCard extends StatelessWidget {
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      apartado.icono,
-                      style: const TextStyle(fontSize: 24),
+                    child: IconoWidget(
+                      imagePath: apartado.imagePath,
+                      emoji: apartado.icono,
+                      fontSize: 24,
                     ),
                   ),
                   const Icon(

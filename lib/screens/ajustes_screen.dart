@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
 import '../models/apartado.dart';
+import '../widgets/icono_widget.dart';
 
 class AjustesScreen extends StatefulWidget {
   final List<Apartado> apartados;
@@ -163,11 +164,11 @@ class _AjustesScreenState extends State<AjustesScreen> {
                 color: const Color(0xFFEEF2FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
-                child: Text(
-                  apartado.icono,
-                  style: const TextStyle(fontSize: 22),
-                ),
+              child: IconoWidget(
+                imagePath: apartado.imagePath,
+                emoji: apartado.icono,
+                fontSize: 22,
+                size: 42,
               ),
             ),
             const SizedBox(width: 12),

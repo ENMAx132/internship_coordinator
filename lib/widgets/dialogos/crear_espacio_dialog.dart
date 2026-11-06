@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/apartado.dart';
 import '../../models/espacio.dart';
+import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearEspacioDialog extends StatefulWidget {
   final ValueChanged<Espacio> onCrear;
@@ -21,6 +22,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   final nombreCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   String emojiSelec = '🏢';
+  String? imagePathSelec;
   final emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
   late String apartadoIdSelec;
 
@@ -74,6 +76,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
     switch (_paso) {
       case 0:
         emojiSelec = '🏢';
+        imagePathSelec = null;
         break;
       case 1:
         nombreCtrl.clear();
@@ -100,6 +103,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             ? 'Área de trabajo'
             : descCtrl.text.trim(),
         emoji: emojiSelec,
+        imagePath: imagePathSelec,
         apartadoId: apartadoIdSelec,
       ),
     );
@@ -115,12 +119,13 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
         'Nuevo Espacio',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -159,7 +164,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
               duration: const Duration(milliseconds: 200),
               child: SizedBox(
                 key: ValueKey(_paso),
-                height: _paso == 0 ? 150 : 96,
+                height: _paso == 0 ? 320 : 96,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -171,12 +176,13 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Expanded(child: _construirCampo()),
+                    _construirCampo(),
                   ],
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -207,20 +213,13 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   Widget _construirCampo() {
     switch (_paso) {
       case 0:
-        return SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: emojis.map((e) {
-              return ChoiceChip(
-                label: Text(e, style: const TextStyle(fontSize: 18)),
-                selected: emojiSelec == e,
-                onSelected: (sel) {
-                  if (sel) setState(() => emojiSelec = e);
-                },
-              );
-            }).toList(),
-          ),
+        return SelectorImagenIcono(
+          emoji: emojiSelec,
+          imagePath: imagePathSelec,
+          emojis: emojis,
+          size: 104,
+          onImagePicked: (p) => setState(() => imagePathSelec = p),
+          onEmojiChange: (e) => setState(() => emojiSelec = e),
         );
       case 1:
         return TextField(

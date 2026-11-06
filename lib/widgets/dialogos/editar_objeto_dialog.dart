@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/espacio.dart';
 import '../../models/objeto_inventario.dart';
+import '../../widgets/seleccionar_imagen_icono.dart';
 
 class EditarObjetoDialog extends StatefulWidget {
   final ObjetoInventario objeto;
@@ -30,6 +31,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
   late String espacioIdSelec;
   late String categoriaSelec;
   late String estadoSelec;
+  late String? imagePathSelec;
 
   @override
   void initState() {
@@ -42,6 +44,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     espacioIdSelec = widget.objeto.espacioId;
     categoriaSelec = widget.objeto.categoria;
     estadoSelec = widget.objeto.estado;
+    imagePathSelec = widget.objeto.imagePath;
   }
 
   @override
@@ -126,6 +129,13 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                 if (val != null) setState(() => espacioIdSelec = val);
               },
             ),
+            const SizedBox(height: 12),
+            SelectorImagenIcono(
+              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '',
+              imagePath: imagePathSelec,
+              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              onEmojiChange: (e) => setState(() {}),
+            ),
           ],
         ),
       ),
@@ -164,6 +174,10 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                     ? widget.objeto.marca
                     : marcaCtrl.text.trim(),
                 fechaRegistro: widget.objeto.fechaRegistro,
+                fechaEnRevision: estadoSelec == 'En revisión'
+                    ? DateTime.now()
+                    : widget.objeto.fechaEnRevision,
+                imagePath: imagePathSelec,
               ),
             );
             Navigator.pop(context);

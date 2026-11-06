@@ -5,6 +5,7 @@ class Espacio {
   final String descripcion;
   final String emoji;
   final String apartadoId;
+  final String? imagePath;
 
   Espacio({
     required this.id,
@@ -12,5 +13,6 @@ class Espacio {
     required this.descripcion,
     required this.emoji,
     required this.apartadoId,
+    this.imagePath,
   });
 }

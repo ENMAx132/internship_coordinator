@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/espacio.dart';
+import 'icono_widget.dart';
 
 class SectorCard extends StatelessWidget {
   final Espacio espacio;
@@ -49,7 +50,11 @@ class SectorCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(espacio.emoji, style: const TextStyle(fontSize: 28)),
+                IconoWidget(
+                  imagePath: espacio.imagePath,
+                  emoji: espacio.emoji,
+                  fontSize: 28,
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(

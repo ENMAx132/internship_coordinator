@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/inventario_data.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
+import '../widgets/icono_widget.dart';
 
 class HistorialScreen extends StatelessWidget {
   const HistorialScreen({super.key});
@@ -101,8 +102,12 @@ class HistorialScreen extends StatelessWidget {
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Text(espacio.emoji, style: const TextStyle(fontSize: 20)),
+            child: IconoWidget(
+              imagePath: objeto.imagePath ?? espacio.imagePath,
+              emoji: espacio.emoji,
+              fontSize: 20,
+              size: 42,
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           const SizedBox(width: 12),
