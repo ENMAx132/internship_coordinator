@@ -90,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
             objetosIniciales.add(objeto);
             notificarCambioInventario();
           });
+          _mostrarAviso('Objeto agregado correctamente.');
         },
       ),
     );

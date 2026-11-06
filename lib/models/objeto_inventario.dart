@@ -10,6 +10,7 @@ class ObjetoInventario {
   final String responsable;
   final String marca;
   final DateTime fechaRegistro;
+  final DateTime fechaEnRevision;
 
   static const List<String> estadosDisponibles = [
     'Excelente',
@@ -45,6 +46,8 @@ class ObjetoInventario {
     required this.responsable,
     String? marca,
     DateTime? fechaRegistro,
+    DateTime? fechaEnRevision,
   })  : marca = marca ?? '',
-        fechaRegistro = fechaRegistro ?? DateTime.now();
+        fechaRegistro = fechaRegistro ?? DateTime.now(),
+        fechaEnRevision = fechaEnRevision ?? DateTime.now();
 }

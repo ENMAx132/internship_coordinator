@@ -150,12 +150,13 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         'Registrar Objeto',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -211,7 +212,8 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [

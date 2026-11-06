@@ -164,6 +164,9 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                     ? widget.objeto.marca
                     : marcaCtrl.text.trim(),
                 fechaRegistro: widget.objeto.fechaRegistro,
+                fechaEnRevision: estadoSelec == 'En revisión'
+                    ? DateTime.now()
+                    : widget.objeto.fechaEnRevision,
               ),
             );
             Navigator.pop(context);

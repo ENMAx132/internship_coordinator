@@ -199,6 +199,9 @@ class _EspacioScreenState extends State<EspacioScreen> {
             objetosIniciales.add(obj);
             notificarCambioInventario();
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Objeto agregado correctamente.')),
+          );
         },
       ),
     );
