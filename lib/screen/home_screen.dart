@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../widgets/entity_image.dart';
 import '../models/items.dart';
 import '../models/sector.dart';
 import '../widgets/sector_card.dart';
@@ -35,6 +39,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _pickImageFromSource(ImageSource source) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source);
+    return image?.path;
   }
 
   final List<Sector> sectors = [
@@ -271,9 +281,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                             return ListTile(
-                              leading: Text(
-                                sector.icon,
-                                style: const TextStyle(fontSize: 20),
+                              leading: EntityImage(
+                                imagePath: item.imagePath,
+                                fallbackIcon: sector.icon,
+                                size: 40,
+                                iconSize: 20,
                               ),
                               title: Text(
                                 item.name,
@@ -457,7 +469,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(sector.icon, style: const TextStyle(fontSize: 32)),
+                      EntityImage(
+                        imagePath: sector.imagePath,
+                        fallbackIcon: sector.icon,
+                        size: 64,
+                        iconSize: 32,
+                      ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,6 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAddSectorModal(BuildContext context) {
+    String? selectedImagePath;
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final iconController = TextEditingController(text: '🏢');
@@ -651,6 +669,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                Text(
+                  'Foto del espacio (opcional)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.camera);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Tomar foto'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.gallery);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Galería'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (selectedImagePath != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(selectedImagePath!),
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => setState(() { selectedImagePath = null; }),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -673,6 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? '🏢'
                               : iconController.text.trim(),
                           description: descController.text.trim(),
+                          imagePath: selectedImagePath,
                         ),
                       );
                     });
@@ -693,6 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showEditSectorModal(BuildContext context, Sector sector, [int? index]) {
+    String? selectedImagePath = sector.imagePath;
     final nameController = TextEditingController(text: sector.name);
     final descController = TextEditingController(text: sector.description);
     final iconController = TextEditingController(text: sector.icon);
@@ -773,6 +839,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? sector.icon
                             : iconController.text.trim(),
                         description: descController.text.trim(),
+                        imagePath: selectedImagePath,
                       );
                     });
                     Navigator.pop(context);
@@ -795,6 +862,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameController = TextEditingController(text: item.name);
     final descController = TextEditingController(text: item.description);
     String selectedCategory = item.category;
+    String? selectedImagePath = item.imagePath;
     String selectedSector = item.sectorId;
 
     final categories = [
@@ -883,6 +951,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                Text(
+                  'Foto del objeto (opcional)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.camera);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Tomar foto'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.gallery);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Galería'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (selectedImagePath != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(selectedImagePath!),
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => setState(() { selectedImagePath = null; }),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -900,6 +1014,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       item.category = selectedCategory;
                       item.sectorId = selectedSector;
                       item.description = descController.text.trim();
+                      item.imagePath = selectedImagePath;
                     });
                     Navigator.pop(context);
                   },
@@ -921,6 +1036,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     String selectedCategory = 'Equipos';
+    String? selectedImagePath;
     String selectedSector = preselectedSectorId ?? sectors.first.id;
 
     final categories = [
@@ -1009,6 +1125,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                Text(
+                  'Foto del objeto (opcional)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.camera);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Tomar foto'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final String? path = await _pickImageFromSource(ImageSource.gallery);
+                          if (path != null) { setState(() { selectedImagePath = path; }); }
+                        },
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Galería'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (selectedImagePath != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(selectedImagePath!),
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => setState(() { selectedImagePath = null; }),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -1029,6 +1191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           category: selectedCategory,
                           sectorId: selectedSector,
                           description: descController.text.trim(),
+                          imagePath: selectedImagePath,
                         ),
                       );
                     });

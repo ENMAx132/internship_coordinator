@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/items.dart';
 import '../models/sector.dart';
+import 'entity_image.dart';
 
 class ItemTile extends StatelessWidget {
   final Item item;
@@ -40,7 +41,12 @@ class ItemTile extends StatelessWidget {
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(sector.icon, style: const TextStyle(fontSize: 20)),
+            child: EntityImage(
+              imagePath: item.imagePath,
+              fallbackIcon: sector.icon,
+              size: 40,
+              iconSize: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

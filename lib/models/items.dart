@@ -4,6 +4,7 @@ class Item {
   String category;
   String sectorId;
   String description;
+  String? imagePath;
 
   Item({
     required this.id,
@@ -11,5 +12,6 @@ class Item {
     required this.category,
     required this.sectorId,
     required this.description,
+    this.imagePath,
   });
 }

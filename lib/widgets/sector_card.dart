@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/sector.dart';
+import 'entity_image.dart';
 
 class SectorCard extends StatelessWidget {
   final Sector sector;
@@ -41,7 +42,12 @@ class SectorCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(sector.icon, style: const TextStyle(fontSize: 28)),
+                EntityImage(
+                  imagePath: sector.imagePath,
+                  fallbackIcon: sector.icon,
+                  size: 56,
+                  iconSize: 28,
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
