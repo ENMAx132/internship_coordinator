@@ -4,6 +4,8 @@ import '../data/app_settings.dart';
 import '../data/inventario_data.dart';
 import '../models/apartado.dart';
 import '../models/espacio.dart';
+import '../models/objeto_inventario.dart';
+import '../models/registro_revision.dart';
 import '../widgets/apartado_card.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
@@ -34,8 +36,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _keyAgregar = GlobalKey();
   final GlobalKey _keyHistorial = GlobalKey();
   final GlobalKey _keyMetricas = GlobalKey();
+  final GlobalKey _keyDemoApartado = GlobalKey();
+
+  static const String _idDemoApartado = 'demo_tutorial_apartado';
+  static const String _idDemoEspacio = 'demo_tutorial_espacio';
+  static const String _idDemoObjeto = 'demo_tutorial_objeto';
 
   bool _mostrarTutorial = false;
+  String? _demoApartadoId;
+  String? _demoEspacioId;
+  String? _demoObjetoId;
 
   List<Apartado> get _apartados => widget.apartados;
 
@@ -45,14 +55,125 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!tutorialCompletado.value) {
+        _limpiarDatosTutorial();
         setState(() => _mostrarTutorial = true);
       }
     });
   }
 
   void _finalizarTutorial() {
+    _limpiarDatosTutorial();
     marcarTutorialCompletado();
-    setState(() => _mostrarTutorial = false);
+    setState(() {
+      _mostrarTutorial = false;
+      _paginaActual = 0;
+    });
+  }
+
+  void _prepararPaso(int indice) {
+    if (!mounted) return;
+    switch (indice) {
+      case 0:
+      case 8:
+        setState(() => _paginaActual = 0);
+        break;
+      case 1:
+      case 2:
+        setState(() => _paginaActual = 1);
+        break;
+      case 3:
+        _crearDemoApartado();
+        break;
+      case 4:
+        _crearDemoEspacio();
+        break;
+      case 5:
+        _crearDemoObjeto();
+        break;
+      case 6:
+        setState(() => _paginaActual = 2);
+        break;
+      case 7:
+        setState(() => _paginaActual = 3);
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _crearDemoApartado() {
+    if (_demoApartadoId != null) return;
+    _demoApartadoId = _idDemoApartado;
+    widget.apartados.add(
+      Apartado(
+        id: _demoApartadoId!,
+        nombre: 'Apartado de ejemplo',
+        icono: '🏢',
+        descripcion: 'Creado por el tutorial',
+      ),
+    );
+    setState(() => _paginaActual = 1);
+  }
+
+  void _crearDemoEspacio() {
+    if (_demoApartadoId == null || _demoEspacioId != null) return;
+    _demoEspacioId = _idDemoEspacio;
+    espaciosIniciales.add(
+      Espacio(
+        id: _demoEspacioId!,
+        nombre: 'Espacio de ejemplo',
+        descripcion: 'Creado por el tutorial',
+        emoji: '💻',
+        apartadoId: _demoApartadoId!,
+      ),
+    );
+    setState(() => _paginaActual = 1);
+  }
+
+  void _crearDemoObjeto() {
+    if (_demoEspacioId == null || _demoObjetoId != null) return;
+    _demoObjetoId = _idDemoObjeto;
+    objetosIniciales.add(
+      ObjetoInventario(
+        id: _demoObjetoId!,
+        placa: 'DEMO-001',
+        nombre: 'Objeto de ejemplo',
+        espacioId: _demoEspacioId!,
+        categoria: 'General',
+        estado: 'En revisión',
+        valor: 100,
+        responsable: 'Tutorial',
+        marca: 'Demo',
+      ),
+    );
+    historialRevisiones.add(
+      RegistroRevision(
+        id: 'demo_tutorial_revision',
+        objetoId: _idDemoObjeto,
+        nombre: 'Objeto de ejemplo',
+        placa: 'DEMO-001',
+        espacioId: _idDemoEspacio,
+        fechaEntrada: DateTime.now(),
+      ),
+    );
+    inventarioVersion.value++;
+    setState(() => _paginaActual = 1);
+  }
+
+  void _limpiarDatosTutorial() {
+    objetosIniciales.removeWhere(
+      (o) => o.id == _idDemoObjeto || o.espacioId == _idDemoEspacio,
+    );
+    espaciosIniciales.removeWhere(
+      (e) => e.id == _idDemoEspacio || e.apartadoId == _idDemoApartado,
+    );
+    widget.apartados.removeWhere((a) => a.id == _idDemoApartado);
+    historialRevisiones.removeWhere((r) => r.objetoId == _idDemoObjeto);
+    _demoObjetoId = null;
+    _demoEspacioId = null;
+    _demoApartadoId = null;
+    inventarioVersion.value++;
+    if (mounted) setState(() {});
   }
 
   List<PasoTutorial> _pasosTutorial() {
@@ -70,32 +191,83 @@ class _HomeScreenState extends State<HomeScreen> {
         emoji: '🗂️',
         titulo: 'Apartados',
         descripcion:
-            'Administra todos tus apartados. Mantén presionado uno para '
-            'editarlo o eliminarlo.',
+            'En esta sección se organiza todo. Primero se crea un apartado, '
+            'luego un espacio dentro de él y finalmente los objetos.',
       ),
       PasoTutorial(
         objetivo: _keyAgregar,
         emoji: '➕',
         titulo: 'Agregar',
         descripcion:
-            'Crea un apartado, un espacio dentro de él o un objeto del '
-            'inventario.',
+            'Al tocar este botón se abren tres opciones. Vamos a crear un '
+            'ejemplo de cada una para que veas cómo funciona:',
+        detalles: [
+          '🏢 Nuevo Apartado: agrupa espacios y objetos.',
+          '💻 Nuevo Espacio: crea un área dentro de un apartado.',
+          '📦 Nuevo Objeto: registra un activo o equipo.',
+        ],
+      ),
+      PasoTutorial(
+        objetivo: _keyDemoApartado,
+        emoji: '🏢',
+        titulo: 'Creamos un apartado',
+        descripcion:
+            'Este es el "Apartado de ejemplo". Un apartado agrupa espacios y '
+            'objetos. Aparece en la lista de Apartados y también en Inicio.',
+      ),
+      PasoTutorial(
+        objetivo: _keyDemoApartado,
+        emoji: '💻',
+        titulo: 'Creamos un espacio',
+        descripcion:
+            'Dentro del apartado creamos el "Espacio de ejemplo". Observa cómo '
+            'aumenta el contador de espacios en la tarjeta.',
+      ),
+      PasoTutorial(
+        objetivo: _keyDemoApartado,
+        emoji: '📦',
+        titulo: 'Creamos un objeto',
+        descripcion:
+            'Por último, dentro del espacio creamos el "Objeto de ejemplo". '
+            'Ahora el contador de objetos también aumentó.',
       ),
       PasoTutorial(
         objetivo: _keyHistorial,
         emoji: '🕘',
         titulo: 'Historial',
         descripcion:
-            'Consulta los objetos que han pasado por revisión y los objetos '
-            'registrados.',
+            'Aquí se guarda la actividad del inventario. Tiene dos vistas:',
+        detalles: [
+          '🛠️ Revisiones: objetos que han pasado por revisión, con fecha de '
+              'entrada y, si ya salieron, fecha de salida.',
+          '🕘 Registros: todos los objetos agregados y su fecha de registro.',
+          'Cada tarjeta muestra el nombre, la placa, el espacio y el estado '
+              'del objeto.',
+        ],
       ),
       PasoTutorial(
         objetivo: _keyMetricas,
         emoji: '📊',
         titulo: 'Métricas',
         descripcion:
-            'Revisa el resumen, el valor total y los objetos que están en '
-            'revisión.',
+            'Es el resumen general y por apartado. Incluye:',
+        detalles: [
+          'Filtros por apartado en la parte superior.',
+          'Tarjetas de Espacios, Objetos, Valor total y En revisión.',
+          'Toca "Objetos" para ver todos los objetos y "En revisión" para '
+              'abrir la lista de revisión.',
+          'Detalle por apartado: arrastra una tarjeta para cambiar su orden '
+              'en Inicio.',
+        ],
+      ),
+      PasoTutorial(
+        objetivo: _keyInicio,
+        emoji: '✨',
+        titulo: '¡Todo listo!',
+        descripcion:
+            'Al terminar el tutorial, el apartado, el espacio y el objeto de '
+            'ejemplo se eliminarán automáticamente. Tú podrás crear los tuyos '
+            'con el botón Agregar.',
       ),
     ];
   }
@@ -318,6 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TutorialCoachMarks(
             pasos: _pasosTutorial(),
             onFinalizar: _finalizarTutorial,
+            onPasoCambiado: _prepararPaso,
           ),
       ],
     );
@@ -459,6 +632,9 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final apartado = _apartados[index];
                 return GestureDetector(
+                  key: apartado.id == _demoApartadoId
+                      ? _keyDemoApartado
+                      : null,
                   onLongPress: () => _dialogoEditarApartado(apartado),
                   child: ApartadoCard(
                     apartado: apartado,

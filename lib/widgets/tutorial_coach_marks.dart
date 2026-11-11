@@ -5,23 +5,27 @@ class PasoTutorial {
   final String emoji;
   final String titulo;
   final String descripcion;
+  final List<String> detalles;
 
   const PasoTutorial({
     required this.objetivo,
     required this.emoji,
     required this.titulo,
     required this.descripcion,
+    this.detalles = const [],
   });
 }
 
 class TutorialCoachMarks extends StatefulWidget {
   final List<PasoTutorial> pasos;
   final VoidCallback onFinalizar;
+  final ValueChanged<int>? onPasoCambiado;
 
   const TutorialCoachMarks({
     super.key,
     required this.pasos,
     required this.onFinalizar,
+    this.onPasoCambiado,
   });
 
   @override
@@ -31,12 +35,28 @@ class TutorialCoachMarks extends StatefulWidget {
 class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
   final GlobalKey _overlayKey = GlobalKey();
   int _indice = 0;
+  int? _ultimoPasoNotificado;
   Rect? _rectObjetivo;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notificarPaso();
+      _actualizarRect();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant TutorialCoachMarks oldWidget) {
+    super.didUpdateWidget(oldWidget);
     WidgetsBinding.instance.addPostFrameCallback((_) => _actualizarRect());
+  }
+
+  void _notificarPaso() {
+    if (_ultimoPasoNotificado == _indice) return;
+    _ultimoPasoNotificado = _indice;
+    widget.onPasoCambiado?.call(_indice);
   }
 
   void _actualizarRect() {
@@ -65,6 +85,7 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
       _indice = indice;
       _rectObjetivo = null;
     });
+    _notificarPaso();
     WidgetsBinding.instance.addPostFrameCallback((_) => _actualizarRect());
   }
 
@@ -95,7 +116,7 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
                   painter: _ScrimPainter(rect),
                 ),
               ),
-              if (rect != null) _construirTarjeta(paso, rect),
+              _construirTarjeta(paso, rect),
             ],
           ),
         ),
@@ -103,12 +124,9 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
     );
   }
 
-  Widget _construirTarjeta(PasoTutorial paso, Rect rect) {
+  Widget _construirTarjeta(PasoTutorial paso, Rect? rect) {
     final pantalla = MediaQuery.sizeOf(context);
     final ancho = (pantalla.width - 40).clamp(240.0, 340.0);
-    final izquierda = (rect.center.dx - ancho / 2)
-        .clamp(16.0, pantalla.width - ancho - 16.0);
-    final mostrarArriba = rect.top > 240;
 
     final tarjeta = Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
@@ -152,6 +170,39 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
               color: Color(0xFF64748B),
             ),
           ),
+          if (paso.detalles.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...paso.detalles.map(
+              (detalle) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '•',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        detalle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.3,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -205,6 +256,22 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
         ],
       ),
     );
+
+    if (rect == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: ancho),
+            child: tarjeta,
+          ),
+        ),
+      );
+    }
+
+    final izquierda = (rect.center.dx - ancho / 2)
+        .clamp(16.0, pantalla.width - ancho - 16.0);
+    final mostrarArriba = rect.top > 240;
 
     if (mostrarArriba) {
       return Positioned(
