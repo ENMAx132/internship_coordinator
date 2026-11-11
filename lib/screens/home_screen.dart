@@ -11,6 +11,7 @@ import '../widgets/dialogos/crear_objeto_dialog.dart';
 import '../widgets/dialogos/editar_apartado_dialog.dart';
 import '../widgets/icono_widget.dart';
 import '../widgets/sector_card.dart';
+import '../widgets/tutorial_coach_marks.dart';
 import 'apartado_screen.dart';
 import 'espacio_screen.dart';
 import 'historial_screen.dart';
@@ -28,7 +29,76 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _paginaActual = 0;
 
+  final GlobalKey _keyInicio = GlobalKey();
+  final GlobalKey _keyApartados = GlobalKey();
+  final GlobalKey _keyAgregar = GlobalKey();
+  final GlobalKey _keyHistorial = GlobalKey();
+  final GlobalKey _keyMetricas = GlobalKey();
+
+  bool _mostrarTutorial = false;
+
   List<Apartado> get _apartados => widget.apartados;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!tutorialCompletado.value) {
+        setState(() => _mostrarTutorial = true);
+      }
+    });
+  }
+
+  void _finalizarTutorial() {
+    marcarTutorialCompletado();
+    setState(() => _mostrarTutorial = false);
+  }
+
+  List<PasoTutorial> _pasosTutorial() {
+    return [
+      PasoTutorial(
+        objetivo: _keyInicio,
+        emoji: '🏠',
+        titulo: 'Inicio',
+        descripcion:
+            'Aquí ves tus apartados y sus espacios. Desliza a los lados para '
+            'cambiar entre apartados.',
+      ),
+      PasoTutorial(
+        objetivo: _keyApartados,
+        emoji: '🗂️',
+        titulo: 'Apartados',
+        descripcion:
+            'Administra todos tus apartados. Mantén presionado uno para '
+            'editarlo o eliminarlo.',
+      ),
+      PasoTutorial(
+        objetivo: _keyAgregar,
+        emoji: '➕',
+        titulo: 'Agregar',
+        descripcion:
+            'Crea un apartado, un espacio dentro de él o un objeto del '
+            'inventario.',
+      ),
+      PasoTutorial(
+        objetivo: _keyHistorial,
+        emoji: '🕘',
+        titulo: 'Historial',
+        descripcion:
+            'Consulta los objetos que han pasado por revisión y los objetos '
+            'registrados.',
+      ),
+      PasoTutorial(
+        objetivo: _keyMetricas,
+        emoji: '📊',
+        titulo: 'Métricas',
+        descripcion:
+            'Revisa el resumen, el valor total y los objetos que están en '
+            'revisión.',
+      ),
+    ];
+  }
 
   int _espaciosDe(Apartado apartado) {
     return espaciosIniciales.where((e) => e.apartadoId == apartado.id).length;
@@ -228,19 +298,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: _paginaActual,
-          children: [
-            _construirInicio(),
-            _construirApartados(),
-            const HistorialScreen(),
-            MetricasScreen(apartados: _apartados),
-          ],
+    return Stack(
+      children: [
+        Scaffold(
+          body: SafeArea(
+            child: IndexedStack(
+              index: _paginaActual,
+              children: [
+                _construirInicio(),
+                _construirApartados(),
+                const HistorialScreen(),
+                MetricasScreen(apartados: _apartados),
+              ],
+            ),
+          ),
+          bottomNavigationBar: _construirBarraNavegacion(),
         ),
-      ),
-      bottomNavigationBar: _construirBarraNavegacion(),
+        if (_mostrarTutorial)
+          TutorialCoachMarks(
+            pasos: _pasosTutorial(),
+            onFinalizar: _finalizarTutorial,
+          ),
+      ],
     );
   }
 
@@ -483,12 +562,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             _construirItemNav(
+              clave: _keyInicio,
               icono: Icons.home_outlined,
               iconoActivo: Icons.home_rounded,
               etiqueta: 'Inicio',
               pagina: 0,
             ),
             _construirItemNav(
+              clave: _keyApartados,
               icono: Icons.grid_view_outlined,
               iconoActivo: Icons.grid_view_rounded,
               etiqueta: 'Apartados',
@@ -496,12 +577,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             _construirBotonAgregar(),
             _construirItemNav(
+              clave: _keyHistorial,
               icono: Icons.chat_bubble_outline,
               iconoActivo: Icons.chat_bubble,
               etiqueta: 'Historial',
               pagina: 2,
             ),
             _construirItemNav(
+              clave: _keyMetricas,
               icono: Icons.person_outline,
               iconoActivo: Icons.person,
               etiqueta: 'Métricas',
@@ -514,6 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _construirItemNav({
+    required GlobalKey clave,
     required IconData icono,
     required IconData iconoActivo,
     required String etiqueta,
@@ -522,6 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final seleccionado = _paginaActual == pagina;
     return Expanded(
       child: GestureDetector(
+        key: clave,
         onTap: () {
           setState(() {
             _paginaActual = pagina;
@@ -568,6 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _construirBotonAgregar() {
     return Expanded(
       child: GestureDetector(
+        key: _keyAgregar,
         onTap: _mostrarMenuAgregar,
         behavior: HitTestBehavior.opaque,
         child: Column(

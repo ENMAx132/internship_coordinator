@@ -8,6 +8,7 @@ import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import '../models/registro_revision.dart';
+import 'app_settings.dart';
 
 final ValueNotifier<int> inventarioVersion = ValueNotifier<int>(0);
 
@@ -29,11 +30,23 @@ Future<File> _archivoInventario() async {
 Future<void> cargarInventario() async {
   try {
     final File archivo = await _archivoInventario();
-    if (!await archivo.exists()) return;
+    if (!await archivo.exists()) {
+      tutorialCompletado.value = false;
+      return;
+    }
     final String contenido = await archivo.readAsString();
-    if (contenido.trim().isEmpty) return;
+    if (contenido.trim().isEmpty) {
+      tutorialCompletado.value = false;
+      return;
+    }
     final dynamic data = jsonDecode(contenido);
-    if (data is! Map) return;
+    if (data is! Map) {
+      tutorialCompletado.value = false;
+      return;
+    }
+
+    final dynamic tutorialValor = data['tutorialCompletado'];
+    tutorialCompletado.value = tutorialValor is bool ? tutorialValor : true;
 
     apartadosIniciales
       ..clear()
@@ -79,6 +92,7 @@ Future<void> _escribirInventario() async {
       'objetos': objetosIniciales.map((e) => e.toJson()).toList(),
       'historialRevisiones':
           historialRevisiones.map((e) => e.toJson()).toList(),
+      'tutorialCompletado': tutorialCompletado.value,
     };
     await archivo.writeAsString(jsonEncode(data), flush: true);
   } catch (_) {
@@ -129,5 +143,10 @@ void _sincronizarHistorialRevision() {
 void notificarCambioInventario() {
   _sincronizarHistorialRevision();
   inventarioVersion.value++;
+  guardarInventario();
+}
+
+void marcarTutorialCompletado() {
+  tutorialCompletado.value = true;
   guardarInventario();
 }
