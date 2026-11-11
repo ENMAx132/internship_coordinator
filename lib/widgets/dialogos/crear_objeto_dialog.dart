@@ -29,11 +29,12 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late String espacioIdSelec;
   late String categoriaSelec;
   late String estadoSelec;
-  late String? imagePathSelec;
+  String? imagePathSelec;
 
   int _paso = 0;
 
   static const List<String> _ayudas = [
+    'Agrega una foto para el objeto (opcional)',
     '¿Cómo se llama el objeto?',
     'Identificador o placa del activo',
     'Fabricante o marca (opcional)',
@@ -93,24 +94,27 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   void _limpiarPasoActual() {
     switch (_paso) {
       case 0:
-        nombreCtrl.clear();
+        imagePathSelec = null;
         break;
       case 1:
-        placaCtrl.clear();
+        nombreCtrl.clear();
         break;
       case 2:
-        marcaCtrl.clear();
+        placaCtrl.clear();
         break;
       case 3:
-        respCtrl.clear();
+        marcaCtrl.clear();
         break;
       case 4:
-        valorCtrl.clear();
+        respCtrl.clear();
         break;
       case 5:
-        categoriaSelec = ObjetoInventario.categoriasDisponibles.first;
+        valorCtrl.clear();
         break;
       case 6:
+        categoriaSelec = ObjetoInventario.categoriasDisponibles.first;
+        break;
+      case 7:
         estadoSelec = ObjetoInventario.estadosDisponibles.first;
         break;
       default:
@@ -194,25 +198,23 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
               ),
             ),
             const SizedBox(height: 20),
-            AnimatedSwitcher(
+            AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: SizedBox(
+              alignment: Alignment.topCenter,
+              child: Column(
                 key: ValueKey(_paso),
-                height: _esUltimoPaso ? 320 : 96,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      _ayudas[_paso],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _ayudas[_paso],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
                     ),
-                    const SizedBox(height: 10),
-                    _construirCampo(),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+                  _construirCampo(),
+                ],
               ),
             ),
             ],
@@ -224,10 +226,11 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
-        TextButton(
-          onPressed: _paso == 0 ? null : _atras,
-          child: const Text('Atrás'),
-        ),
+        if (_paso > 0)
+          TextButton(
+            onPressed: _atras,
+            child: const Text('Atrás'),
+          ),
         TextButton(
           onPressed: _omitir,
           child: const Text('Omitir'),
@@ -247,6 +250,12 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   Widget _construirCampo() {
     switch (_paso) {
       case 0:
+        return SelectorImagenIcono(
+          emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
+          imagePath: imagePathSelec,
+          onImagePicked: (p) => setState(() => imagePathSelec = p),
+        );
+      case 1:
         return TextField(
           controller: nombreCtrl,
           autofocus: true,
@@ -254,33 +263,33 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           decoration: const InputDecoration(labelText: 'Nombre del objeto'),
           onSubmitted: (_) => _avanzar(),
         );
-      case 1:
+      case 2:
         return TextField(
           controller: placaCtrl,
           decoration: const InputDecoration(labelText: 'Código / Placa'),
           onSubmitted: (_) => _avanzar(),
         );
-      case 2:
+      case 3:
         return TextField(
           controller: marcaCtrl,
           decoration: const InputDecoration(labelText: 'Marca'),
           onSubmitted: (_) => _avanzar(),
         );
-      case 3:
+      case 4:
         return TextField(
           controller: respCtrl,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(labelText: 'Responsable'),
           onSubmitted: (_) => _avanzar(),
         );
-      case 4:
+      case 5:
         return TextField(
           controller: valorCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(labelText: 'Precio'),
           onSubmitted: (_) => _avanzar(),
         );
-      case 5:
+      case 6:
         return DropdownButtonFormField<String>(
           initialValue: categoriaSelec,
           decoration: const InputDecoration(labelText: 'Tipo'),
@@ -294,7 +303,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
             if (val != null) setState(() => categoriaSelec = val);
           },
         );
-      case 6:
+      case 7:
         return DropdownButtonFormField<String>(
           initialValue: estadoSelec,
           decoration: const InputDecoration(labelText: 'Estado'),
@@ -309,31 +318,18 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           },
         );
       default:
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: espacioIdSelec,
-              decoration: const InputDecoration(labelText: 'Espacio / Sala'),
-              items: widget.espacios.map((e) {
-                return DropdownMenuItem(
-                  value: e.id,
-                  child: Text('${e.emoji} ${e.nombre}'),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => espacioIdSelec = val);
-              },
-            ),
-            const SizedBox(height: 12),
-            SelectorImagenIcono(
-              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '',
-              imagePath: imagePathSelec,
-              onImagePicked: (p) => setState(() => imagePathSelec = p),
-              onEmojiChange: (e) => setState(() {}),
-            ),
-          ],
+        return DropdownButtonFormField<String>(
+          initialValue: espacioIdSelec,
+          decoration: const InputDecoration(labelText: 'Espacio / Sala'),
+          items: widget.espacios.map((e) {
+            return DropdownMenuItem(
+              value: e.id,
+              child: Text('${e.emoji} ${e.nombre}'),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) setState(() => espacioIdSelec = val);
+          },
         );
     }
   }

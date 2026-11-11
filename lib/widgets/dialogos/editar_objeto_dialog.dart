@@ -67,6 +67,12 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            SelectorImagenIcono(
+              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
+              imagePath: imagePathSelec,
+              onImagePicked: (p) => setState(() => imagePathSelec = p),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: nombreCtrl,
               decoration: const InputDecoration(labelText: 'Nombre del objeto'),
@@ -128,13 +134,6 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               onChanged: (val) {
                 if (val != null) setState(() => espacioIdSelec = val);
               },
-            ),
-            const SizedBox(height: 12),
-            SelectorImagenIcono(
-              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '',
-              imagePath: imagePathSelec,
-              onImagePicked: (p) => setState(() => imagePathSelec = p),
-              onEmojiChange: (e) => setState(() {}),
             ),
           ],
         ),

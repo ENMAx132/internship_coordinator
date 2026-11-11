@@ -3,7 +3,9 @@
 import 'data/inventario_data.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await cargarInventario();
   runApp(const InventarioApp());
 }
 

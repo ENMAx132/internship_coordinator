@@ -5,6 +5,7 @@ import '../models/apartado.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import '../widgets/dialogos/editar_espacio_dialog.dart';
+import '../widgets/dialogos/editar_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/icono_widget.dart';
 import '../widgets/sector_card.dart';
@@ -22,9 +23,17 @@ class ApartadoScreen extends StatefulWidget {
 }
 
 class _ApartadoScreenState extends State<ApartadoScreen> {
+  late Apartado _apartado;
+
+  @override
+  void initState() {
+    super.initState();
+    _apartado = widget.apartado;
+  }
+
   List<Espacio> get _espacios {
     return espaciosIniciales
-        .where((e) => e.apartadoId == widget.apartado.id)
+        .where((e) => e.apartadoId == _apartado.id)
         .toList();
   }
 
@@ -45,7 +54,14 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(widget.apartado.nombre),
+        title: Text(_apartado.nombre),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Editar apartado',
+            onPressed: _dialogoEditarApartado,
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -75,8 +91,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: IconoWidget(
-                        imagePath: widget.apartado.imagePath,
-                        emoji: widget.apartado.icono,
+                        imagePath: _apartado.imagePath,
+                        emoji: _apartado.icono,
                         fontSize: 30,
                       ),
                     ),
@@ -86,7 +102,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.apartado.nombre,
+                            _apartado.nombre,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -95,7 +111,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            widget.apartado.descripcion,
+                            _apartado.descripcion,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF64748B),
@@ -218,14 +234,56 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     });
   }
 
+  void _dialogoEditarApartado() {
+    showDialog(
+      context: context,
+      builder: (ctx) => EditarApartadoDialog(
+        apartado: _apartado,
+        onActualizar: (a) {
+          setState(() {
+            _apartado = a;
+            final index =
+                widget.apartados.indexWhere((item) => item.id == a.id);
+            if (index != -1) {
+              widget.apartados[index] = a;
+              notificarCambioInventario();
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Apartado actualizado con éxito.')),
+          );
+        },
+        onEliminar: (a) {
+          setState(() {
+            widget.apartados.removeWhere((item) => item.id == a.id);
+            final ids = espaciosIniciales
+                .where((e) => e.apartadoId == a.id)
+                .map((e) => e.id)
+                .toSet();
+            espaciosIniciales.removeWhere((e) => e.apartadoId == a.id);
+            objetosIniciales.removeWhere((o) => ids.contains(o.espacioId));
+            notificarCambioInventario();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Apartado eliminado correctamente.'),
+            ),
+          );
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   void _dialogoCrearEspacio() {
     showDialog(
       context: context,
       builder: (ctx) => CrearEspacioDialog(
-        apartados: [widget.apartado],
+        apartados: [_apartado],
         onCrear: (espacio) {
           setState(() {
             espaciosIniciales.add(espacio);
+            notificarCambioInventario();
           });
         },
       ),

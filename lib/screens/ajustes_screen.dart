@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/app_settings.dart';
+import '../data/inventario_data.dart';
 import '../models/apartado.dart';
 import '../widgets/icono_widget.dart';
 
@@ -19,6 +20,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     widget.apartados.insert(newIndex, apartado);
     apartadoInicioId.value = widget.apartados.first.id;
     apartadosOrdenVersion.value++;
+    notificarCambioInventario();
     setState(() {});
   }
 

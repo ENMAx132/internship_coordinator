@@ -53,4 +53,36 @@ class ObjetoInventario {
         marca = marca ?? '',
         fechaRegistro = fechaRegistro ?? DateTime.now(),
         fechaEnRevision = fechaEnRevision ?? DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'placa': placa,
+        'nombre': nombre,
+        'espacioId': espacioId,
+        'categoria': categoria,
+        'estado': estado,
+        'valor': valor,
+        'responsable': responsable,
+        'imagePath': imagePath,
+        'marca': marca,
+        'fechaRegistro': fechaRegistro.toIso8601String(),
+        'fechaEnRevision': fechaEnRevision.toIso8601String(),
+      };
+
+  factory ObjetoInventario.fromJson(Map<String, dynamic> json) =>
+      ObjetoInventario(
+        id: json['id'] as String? ?? '',
+        placa: json['placa'] as String? ?? '',
+        nombre: json['nombre'] as String? ?? '',
+        espacioId: json['espacioId'] as String? ?? '',
+        categoria: json['categoria'] as String? ?? categoriasDisponibles.first,
+        estado: json['estado'] as String? ?? estadosDisponibles.first,
+        valor: (json['valor'] as num?)?.toDouble() ?? 0.0,
+        responsable: json['responsable'] as String? ?? 'Sin asignar',
+        imagePath: json['imagePath'] as String?,
+        marca: json['marca'] as String?,
+        fechaRegistro: DateTime.tryParse(json['fechaRegistro'] as String? ?? ''),
+        fechaEnRevision:
+            DateTime.tryParse(json['fechaEnRevision'] as String? ?? ''),
+      );
 }

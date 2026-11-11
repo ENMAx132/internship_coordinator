@@ -8,6 +8,7 @@ import '../widgets/apartado_card.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/dialogos/crear_objeto_dialog.dart';
+import '../widgets/dialogos/editar_apartado_dialog.dart';
 import '../widgets/icono_widget.dart';
 import '../widgets/sector_card.dart';
 import 'apartado_screen.dart';
@@ -52,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onCrear: (apartado) {
           setState(() {
             _apartados.add(apartado);
+            notificarCambioInventario();
           });
         },
       ),
@@ -70,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onCrear: (espacio) {
           setState(() {
             espaciosIniciales.add(espacio);
+            notificarCambioInventario();
           });
         },
       ),
@@ -117,49 +120,40 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _confirmarEliminarApartado(Apartado apartado) {
+  void _dialogoEditarApartado(Apartado apartado) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Eliminar Apartado',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          '¿Seguro que quieres eliminar "${apartado.nombre}"? Se borrarán también sus espacios y objetos.',
-          style: const TextStyle(color: Color(0xFF475569)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() {
-                _apartados.removeWhere((a) => a.id == apartado.id);
-                final ids = espaciosIniciales
-                    .where((e) => e.apartadoId == apartado.id)
-                    .map((e) => e.id)
-                    .toSet();
-                espaciosIniciales
-                    .removeWhere((e) => e.apartadoId == apartado.id);
-                objetosIniciales
-                    .removeWhere((o) => ids.contains(o.espacioId));
-                notificarCambioInventario();
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Apartado eliminado correctamente.'),
-                ),
-              );
-            },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+      builder: (ctx) => EditarApartadoDialog(
+        apartado: apartado,
+        onActualizar: (a) {
+          setState(() {
+            final index = _apartados.indexWhere((item) => item.id == a.id);
+            if (index != -1) {
+              _apartados[index] = a;
+              notificarCambioInventario();
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Apartado actualizado con éxito.')),
+          );
+        },
+        onEliminar: (a) {
+          setState(() {
+            _apartados.removeWhere((item) => item.id == a.id);
+            final ids = espaciosIniciales
+                .where((e) => e.apartadoId == a.id)
+                .map((e) => e.id)
+                .toSet();
+            espaciosIniciales.removeWhere((e) => e.apartadoId == a.id);
+            objetosIniciales.removeWhere((o) => ids.contains(o.espacioId));
+            notificarCambioInventario();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Apartado eliminado correctamente.'),
+            ),
+          );
+        },
       ),
     );
   }
@@ -386,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final apartado = _apartados[index];
                 return GestureDetector(
-                  onLongPress: () => _confirmarEliminarApartado(apartado),
+                  onLongPress: () => _dialogoEditarApartado(apartado),
                   child: ApartadoCard(
                     apartado: apartado,
                     espacios: _espaciosDe(apartado),

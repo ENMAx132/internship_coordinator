@@ -11,6 +11,7 @@ class SelectorImagenIcono extends StatefulWidget {
   final List<String>? emojis;
   final ValueChanged<String?> onImagePicked;
   final ValueChanged<String>? onEmojiChange;
+  final ValueChanged<bool>? onEmojisVisibilityChanged;
   final double size;
 
   const SelectorImagenIcono({
@@ -18,6 +19,7 @@ class SelectorImagenIcono extends StatefulWidget {
     required this.emoji,
     required this.onImagePicked,
     this.onEmojiChange,
+    this.onEmojisVisibilityChanged,
     this.imagePath,
     this.emojis,
     this.size = 104,
@@ -32,6 +34,7 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
   late String? _imagePath;
   final ImagePicker _picker = ImagePicker();
   bool _procesando = false;
+  bool _mostrarEmojis = false;
 
   @override
   void initState() {
@@ -46,6 +49,11 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
     if (widget.imagePath != oldWidget.imagePath) {
       setState(() => _imagePath = widget.imagePath);
     }
+  }
+
+  void _alternarEmojis() {
+    setState(() => _mostrarEmojis = !_mostrarEmojis);
+    widget.onEmojisVisibilityChanged?.call(_mostrarEmojis);
   }
 
   Future<void> _elegirImagen(ImageSource fuente) async {
@@ -108,19 +116,27 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _boton(Icons.photo_library_outlined, 'Galeria', () {
               _elegirImagen(ImageSource.gallery);
             }),
-            const SizedBox(width: 8),
             _boton(Icons.camera_alt_outlined, 'Tomar foto', () {
               _elegirImagen(ImageSource.camera);
             }),
+            if (widget.emojis != null)
+              _boton(
+                Icons.emoji_emotions_outlined,
+                'Emojis',
+                _alternarEmojis,
+                activo: _mostrarEmojis,
+              ),
           ],
         ),
-        if (widget.emojis != null) ...[
+        if (_mostrarEmojis && widget.emojis != null) ...[
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -153,7 +169,12 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
     );
   }
 
-  Widget _boton(IconData icono, String etiqueta, VoidCallback onTap) {
+  Widget _boton(
+    IconData icono,
+    String etiqueta,
+    VoidCallback onTap, {
+    bool activo = false,
+  }) {
     return OutlinedButton.icon(
       onPressed: _procesando ? null : onTap,
       icon: Icon(icono, size: 18, color: const Color(0xFF6366F1)),
@@ -166,6 +187,7 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
         ),
       ),
       style: OutlinedButton.styleFrom(
+        backgroundColor: activo ? const Color(0xFFEEF2FF) : null,
         side: const BorderSide(color: Color(0xFF6366F1)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

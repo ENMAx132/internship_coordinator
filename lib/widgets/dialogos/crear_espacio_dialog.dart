@@ -23,6 +23,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   final descCtrl = TextEditingController();
   String emojiSelec = '🏢';
   String? imagePathSelec;
+  bool _emojisVisibles = false;
   final emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
   late String apartadoIdSelec;
 
@@ -58,12 +59,18 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
       _crear();
       return;
     }
-    setState(() => _paso++);
+    setState(() {
+      _emojisVisibles = false;
+      _paso++;
+    });
   }
 
   void _atras() {
     if (_paso > 0) {
-      setState(() => _paso--);
+      setState(() {
+        _emojisVisibles = false;
+        _paso--;
+      });
     }
   }
 
@@ -160,53 +167,54 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
               ),
             ),
             const SizedBox(height: 20),
-            AnimatedSwitcher(
+            AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: SizedBox(
+              alignment: Alignment.topCenter,
+              child: Column(
                 key: ValueKey(_paso),
-                height: _paso == 0 ? 320 : 96,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      _ayudas[_paso],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _ayudas[_paso],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
                     ),
-                    const SizedBox(height: 10),
-                    _construirCampo(),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+                  _construirCampo(),
+                ],
               ),
             ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        TextButton(
-          onPressed: _paso == 0 ? null : _atras,
-          child: const Text('Atrás'),
-        ),
-        TextButton(
-          onPressed: _omitir,
-          child: const Text('Omitir'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6366F1),
-            foregroundColor: Colors.white,
-          ),
-          onPressed: _avanzar,
-          child: Text(_esUltimoPaso ? 'Crear' : 'Siguiente'),
-        ),
-      ],
+      actions: _emojisVisibles
+          ? null
+          : [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              if (_paso > 0)
+                TextButton(
+                  onPressed: _atras,
+                  child: const Text('Atrás'),
+                ),
+              TextButton(
+                onPressed: _omitir,
+                child: const Text('Omitir'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _avanzar,
+                child: Text(_esUltimoPaso ? 'Crear' : 'Siguiente'),
+              ),
+            ],
     );
   }
 
@@ -220,6 +228,8 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
           size: 104,
           onImagePicked: (p) => setState(() => imagePathSelec = p),
           onEmojiChange: (e) => setState(() => emojiSelec = e),
+          onEmojisVisibilityChanged: (visible) =>
+              setState(() => _emojisVisibles = visible),
         );
       case 1:
         return TextField(

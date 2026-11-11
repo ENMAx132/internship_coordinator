@@ -4,7 +4,6 @@ import '../data/inventario_data.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
 import '../widgets/icono_widget.dart';
-import '../widgets/dialogos/editar_objeto_dialog.dart';
 
 class VerRevisionScreen extends StatefulWidget {
   final List<ObjetoInventario> objetos;
@@ -53,6 +52,92 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
         }
       }
     });
+  }
+
+  void _editarEstado(ObjetoInventario objeto) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Cambiar estado',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: ObjetoInventario.estadosDisponibles.map((estado) {
+              final seleccionado = objeto.estado == estado;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  seleccionado
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: seleccionado
+                      ? const Color(0xFF6366F1)
+                      : const Color(0xFF94A3B8),
+                ),
+                title: Text(estado),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _actualizarEstado(objeto, estado);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _actualizarEstado(ObjetoInventario objeto, String nuevoEstado) {
+    if (nuevoEstado == objeto.estado) return;
+
+    final actualizado = ObjetoInventario(
+      id: objeto.id,
+      placa: objeto.placa,
+      nombre: objeto.nombre,
+      espacioId: objeto.espacioId,
+      categoria: objeto.categoria,
+      estado: nuevoEstado,
+      valor: objeto.valor,
+      responsable: objeto.responsable,
+      marca: objeto.marca,
+      fechaRegistro: objeto.fechaRegistro,
+      fechaEnRevision: nuevoEstado == 'En revisión'
+          ? DateTime.now()
+          : objeto.fechaEnRevision,
+      imagePath: objeto.imagePath,
+    );
+
+    setState(() {
+      final indexGlobal =
+          objetosIniciales.indexWhere((item) => item.id == objeto.id);
+      if (indexGlobal != -1) {
+        objetosIniciales[indexGlobal] = actualizado;
+      }
+      final indexLocal = _ordenados.indexWhere((item) => item.id == objeto.id);
+      if (indexLocal != -1) {
+        if (nuevoEstado.toLowerCase() == 'en revisión') {
+          _ordenados[indexLocal] = actualizado;
+        } else {
+          _ordenados.removeAt(indexLocal);
+        }
+      }
+    });
+    notificarCambioInventario();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Estado actualizado correctamente.')),
+    );
   }
 
   String _formatearFecha(DateTime fecha) {
@@ -171,10 +256,12 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
   Widget _construirItem(ObjetoInventario o, int index) {
     final espacio = _espacioDe(o.espacioId);
     final prioridad = _ordenados.indexWhere((x) => x.id == o.id) + 1;
-    return Container(
+    return GestureDetector(
       key: ValueKey(o.id),
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      onLongPress: () => _editarEstado(o),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -315,6 +402,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

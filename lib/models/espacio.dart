@@ -15,4 +15,22 @@ class Espacio {
     required this.apartadoId,
     this.imagePath,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'emoji': emoji,
+        'apartadoId': apartadoId,
+        'imagePath': imagePath,
+      };
+
+  factory Espacio.fromJson(Map<String, dynamic> json) => Espacio(
+        id: json['id'] as String? ?? '',
+        nombre: json['nombre'] as String? ?? '',
+        descripcion: json['descripcion'] as String? ?? '',
+        emoji: json['emoji'] as String? ?? '🏢',
+        apartadoId: json['apartadoId'] as String? ?? '',
+        imagePath: json['imagePath'] as String?,
+      );
 }
