@@ -6,7 +6,6 @@ import '../models/apartado.dart';
 import '../widgets/icono_widget.dart';
 import '../models/espacio.dart';
 import '../models/objeto_inventario.dart';
-import 'ajustes_screen.dart';
 import 'ver_revision_screen.dart';
 import 'ver_todos_objetos_screen.dart';
 
@@ -72,57 +71,22 @@ class _MetricasScreenState extends State<MetricasScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        Row(
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Métricas',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Resumen general y por apartado',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                  ),
-                ],
+            Text(
+              'Métricas',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1E293B),
+                letterSpacing: -0.5,
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.settings_outlined,
-                  color: Color(0xFF6366F1),
-                ),
-                tooltip: 'Ajustes',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AjustesScreen(apartados: widget.apartados),
-                    ),
-                  );
-                },
-              ),
+            SizedBox(height: 2),
+            Text(
+              'Resumen general y por apartado',
+              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
             ),
           ],
         ),
