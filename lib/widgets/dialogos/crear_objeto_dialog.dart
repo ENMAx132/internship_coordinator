@@ -30,6 +30,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late String categoriaSelec;
   late String estadoSelec;
   String? imagePathSelec;
+  bool _nombreInvalido = false;
 
   int _paso = 0;
 
@@ -73,11 +74,18 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   }
 
   void _avanzar() {
+    if (_paso == 1 && nombreCtrl.text.trim().isEmpty) {
+      setState(() => _nombreInvalido = true);
+      return;
+    }
     if (_esUltimoPaso) {
       _guardar();
       return;
     }
-    setState(() => _paso++);
+    setState(() {
+      _nombreInvalido = false;
+      _paso++;
+    });
   }
 
   void _atras() {
@@ -231,10 +239,11 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
             onPressed: _atras,
             child: const Text('Atrás'),
           ),
-        TextButton(
-          onPressed: _omitir,
-          child: const Text('Omitir'),
-        ),
+        if (_paso != 1)
+          TextButton(
+            onPressed: _omitir,
+            child: const Text('Omitir'),
+          ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6366F1),
@@ -260,7 +269,16 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           controller: nombreCtrl,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Nombre del objeto'),
+          onChanged: (value) {
+            if (_nombreInvalido && value.trim().isNotEmpty) {
+              setState(() => _nombreInvalido = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'Nombre del objeto',
+            errorText:
+                _nombreInvalido ? 'El nombre es obligatorio' : null,
+          ),
           onSubmitted: (_) => _avanzar(),
         );
       case 2:

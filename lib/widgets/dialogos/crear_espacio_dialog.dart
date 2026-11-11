@@ -24,6 +24,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   String emojiSelec = '🏢';
   String? imagePathSelec;
   bool _emojisVisibles = false;
+  bool _nombreInvalido = false;
   final emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
   late String apartadoIdSelec;
 
@@ -55,11 +56,16 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   }
 
   void _avanzar() {
+    if (_paso == 1 && nombreCtrl.text.trim().isEmpty) {
+      setState(() => _nombreInvalido = true);
+      return;
+    }
     if (_esUltimoPaso) {
       _crear();
       return;
     }
     setState(() {
+      _nombreInvalido = false;
       _emojisVisibles = false;
       _paso++;
     });
@@ -202,10 +208,11 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
                   onPressed: _atras,
                   child: const Text('Atrás'),
                 ),
-              TextButton(
-                onPressed: _omitir,
-                child: const Text('Omitir'),
-              ),
+              if (_paso != 1)
+                TextButton(
+                  onPressed: _omitir,
+                  child: const Text('Omitir'),
+                ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
@@ -236,7 +243,16 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
           controller: nombreCtrl,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Nombre del espacio'),
+          onChanged: (value) {
+            if (_nombreInvalido && value.trim().isNotEmpty) {
+              setState(() => _nombreInvalido = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'Nombre del espacio',
+            errorText:
+                _nombreInvalido ? 'El nombre es obligatorio' : null,
+          ),
           onSubmitted: (_) => _avanzar(),
         );
       case 2:

@@ -18,6 +18,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   String? imagePathSelec;
   String emojiSelec = '🏢';
   bool _emojisVisibles = false;
+  bool _nombreInvalido = false;
   final emojis = [
     '🏢',
     '💻',
@@ -53,11 +54,16 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   }
 
   void _avanzar() {
+    if (_paso == 1 && nombreCtrl.text.trim().isEmpty) {
+      setState(() => _nombreInvalido = true);
+      return;
+    }
     if (_esUltimoPaso) {
       _crear();
       return;
     }
     setState(() {
+      _nombreInvalido = false;
       _emojisVisibles = false;
       _paso++;
     });
@@ -193,10 +199,11 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
                   onPressed: _atras,
                   child: const Text('Atrás'),
                 ),
-              TextButton(
-                onPressed: _omitir,
-                child: const Text('Omitir'),
-              ),
+              if (_paso != 1)
+                TextButton(
+                  onPressed: _omitir,
+                  child: const Text('Omitir'),
+                ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
@@ -227,7 +234,16 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
           controller: nombreCtrl,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Nombre del apartado'),
+          onChanged: (value) {
+            if (_nombreInvalido && value.trim().isNotEmpty) {
+              setState(() => _nombreInvalido = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'Nombre del apartado',
+            errorText:
+                _nombreInvalido ? 'El nombre es obligatorio' : null,
+          ),
           onSubmitted: (_) => _avanzar(),
         );
       default:
