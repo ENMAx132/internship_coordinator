@@ -39,7 +39,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
 
   int get _objetosEnRevision {
     return _objetos
-        .where((o) => o.estado.toLowerCase() == 'en revisión')
+        .where((o) => ObjetoInventario.esEstadoEnRevision(o.estado))
         .length;
   }
 
@@ -62,6 +62,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
     widget.apartados.insert(newIndex, apartado);
     apartadoInicioId.value = widget.apartados.first.id;
     apartadosOrdenVersion.value++;
+    notificarCambioInventario();
     setState(() {});
   }
 

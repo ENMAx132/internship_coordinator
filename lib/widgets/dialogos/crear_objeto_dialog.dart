@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/inventario_data.dart';
 import '../../models/espacio.dart';
 import '../../models/objeto_inventario.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
@@ -31,6 +32,8 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late String estadoSelec;
   String? imagePathSelec;
   bool _nombreInvalido = false;
+  bool _placaInvalida = false;
+  bool _valorInvalido = false;
 
   int _paso = 0;
 
@@ -78,12 +81,36 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
       setState(() => _nombreInvalido = true);
       return;
     }
+    if (_paso == 2) {
+      final placa = placaCtrl.text.trim().isEmpty
+          ? widget.placaInicial.trim()
+          : placaCtrl.text.trim();
+      final duplicada = objetosIniciales.any(
+        (o) => o.placa.trim().toLowerCase() == placa.toLowerCase(),
+      );
+      if (duplicada) {
+        setState(() => _placaInvalida = true);
+        return;
+      }
+    }
+    if (_paso == 5) {
+      final texto = valorCtrl.text.trim();
+      if (texto.isNotEmpty) {
+        final valor = double.tryParse(texto.replaceAll(',', '.'));
+        if (valor == null || valor < 0) {
+          setState(() => _valorInvalido = true);
+          return;
+        }
+      }
+    }
     if (_esUltimoPaso) {
       _guardar();
       return;
     }
     setState(() {
       _nombreInvalido = false;
+      _placaInvalida = false;
+      _valorInvalido = false;
       _paso++;
     });
   }
@@ -284,7 +311,16 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
       case 2:
         return TextField(
           controller: placaCtrl,
-          decoration: const InputDecoration(labelText: 'Código / Placa'),
+          onChanged: (value) {
+            if (_placaInvalida) {
+              setState(() => _placaInvalida = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'Código / Placa',
+            errorText:
+                _placaInvalida ? 'Ya existe un objeto con esa placa' : null,
+          ),
           onSubmitted: (_) => _avanzar(),
         );
       case 3:
@@ -304,7 +340,17 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         return TextField(
           controller: valorCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Precio'),
+          onChanged: (value) {
+            if (_valorInvalido) {
+              setState(() => _valorInvalido = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'Precio',
+            errorText: _valorInvalido
+                ? 'Ingresa un valor válido (mayor o igual a 0)'
+                : null,
+          ),
           onSubmitted: (_) => _avanzar(),
         );
       case 6:

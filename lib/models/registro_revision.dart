@@ -8,6 +8,7 @@ class RegistroRevision {
   final String? imagePath;
   final DateTime fechaEntrada;
   DateTime? fechaSalida;
+  String? motivoSalida;
 
   RegistroRevision({
     required this.id,
@@ -18,6 +19,7 @@ class RegistroRevision {
     this.imagePath,
     required this.fechaEntrada,
     this.fechaSalida,
+    this.motivoSalida,
   });
 
   bool get enRevision => fechaSalida == null;
@@ -31,6 +33,7 @@ class RegistroRevision {
         'imagePath': imagePath,
         'fechaEntrada': fechaEntrada.toIso8601String(),
         'fechaSalida': fechaSalida?.toIso8601String(),
+        'motivoSalida': motivoSalida,
       };
 
   factory RegistroRevision.fromJson(Map<String, dynamic> json) =>
@@ -46,5 +49,6 @@ class RegistroRevision {
                 DateTime.now(),
         fechaSalida:
             DateTime.tryParse(json['fechaSalida'] as String? ?? ''),
+        motivoSalida: json['motivoSalida'] as String?,
       );
 }

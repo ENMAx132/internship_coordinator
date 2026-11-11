@@ -250,22 +250,53 @@ class _EspacioScreenState extends State<EspacioScreen> {
         objeto: obj,
         espacios: [widget.espacio],
         onActualizar: (o) {
+          String? imagenAnterior;
           setState(() {
             final index =
                 objetosIniciales.indexWhere((item) => item.id == o.id);
             if (index != -1) {
+              imagenAnterior = objetosIniciales[index].imagePath;
               objetosIniciales[index] = o;
               notificarCambioInventario();
             }
           });
+          eliminarImagenHuerfana(imagenAnterior);
         },
         onEliminar: (o) {
+          final index = objetosIniciales.indexWhere((item) => item.id == o.id);
+          final imagen = o.imagePath;
+          final registrosActivos = historialRevisiones
+              .where((r) => r.objetoId == o.id && r.fechaSalida == null)
+              .toList();
           setState(() {
+            registrarEliminacionEnHistorial({o.id});
             objetosIniciales.removeWhere((item) => item.id == o.id);
             notificarCambioInventario();
           });
+          Future<void>.delayed(const Duration(seconds: 5), () {
+            eliminarImagenHuerfana(imagen);
+          });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Objeto eliminado correctamente.')),
+            SnackBar(
+              content: const Text('Objeto eliminado correctamente.'),
+              action: SnackBarAction(
+                label: 'Deshacer',
+                onPressed: () {
+                  setState(() {
+                    if (index >= 0 && index <= objetosIniciales.length) {
+                      objetosIniciales.insert(index, o);
+                    } else {
+                      objetosIniciales.add(o);
+                    }
+                    for (final registro in registrosActivos) {
+                      registro.fechaSalida = null;
+                      registro.motivoSalida = null;
+                    }
+                    notificarCambioInventario();
+                  });
+                },
+              ),
+            ),
           );
         },
       ),

@@ -36,6 +36,22 @@ class ObjetoInventario {
     'Suministros',
   ];
 
+  /// Normaliza un estado para compararlo sin depender de acentos ni mayúsculas.
+  static String normalizarEstado(String estado) {
+    return estado
+        .trim()
+        .toLowerCase()
+        .replaceAll('\u00E1', 'a')
+        .replaceAll('\u00E9', 'e')
+        .replaceAll('\u00ED', 'i')
+        .replaceAll('\u00F3', 'o')
+        .replaceAll('\u00FA', 'u');
+  }
+
+  static bool esEstadoEnRevision(String estado) {
+    return normalizarEstado(estado) == 'en revision';
+  }
+
   ObjetoInventario({
     required this.id,
     required this.placa,

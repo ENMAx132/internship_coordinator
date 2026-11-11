@@ -41,6 +41,39 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
   }
 
+  Future<void> _confirmarEliminar() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Eliminar espacio'),
+        content: Text(
+          '¿Seguro que quieres eliminar "${widget.espacio.nombre}"? '
+          'También se eliminarán sus objetos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true && mounted) {
+      Navigator.pop(context);
+      widget.onEliminar(widget.espacio);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -87,10 +120,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            widget.onEliminar(widget.espacio);
-          },
+          onPressed: _confirmarEliminar,
           child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
         ),
         TextButton(

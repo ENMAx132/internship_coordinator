@@ -240,7 +240,9 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
       builder: (ctx) => EditarApartadoDialog(
         apartado: _apartado,
         onActualizar: (a) {
+          String? imagenAnterior;
           setState(() {
+            imagenAnterior = _apartado.imagePath;
             _apartado = a;
             final index =
                 widget.apartados.indexWhere((item) => item.id == a.id);
@@ -249,20 +251,32 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
               notificarCambioInventario();
             }
           });
+          eliminarImagenHuerfana(imagenAnterior);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Apartado actualizado con éxito.')),
           );
         },
         onEliminar: (a) {
+          final espacios =
+              espaciosIniciales.where((e) => e.apartadoId == a.id).toList();
+          final ids = espacios.map((e) => e.id).toSet();
+          final objetos = objetosIniciales
+              .where((o) => ids.contains(o.espacioId))
+              .toList();
+          final imagenes = <String?>[
+            a.imagePath,
+            ...espacios.map((e) => e.imagePath),
+            ...objetos.map((o) => o.imagePath),
+          ];
           setState(() {
+            registrarEliminacionEnHistorial(objetos.map((o) => o.id).toSet());
             widget.apartados.removeWhere((item) => item.id == a.id);
-            final ids = espaciosIniciales
-                .where((e) => e.apartadoId == a.id)
-                .map((e) => e.id)
-                .toSet();
             espaciosIniciales.removeWhere((e) => e.apartadoId == a.id);
             objetosIniciales.removeWhere((o) => ids.contains(o.espacioId));
             notificarCambioInventario();
+          });
+          Future<void>.delayed(const Duration(seconds: 5), () {
+            eliminarImagenesHuerfanas(imagenes);
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -297,23 +311,36 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
         espacio: espacio,
         apartados: widget.apartados,
         onActualizar: (e) {
+          String? imagenAnterior;
           setState(() {
             final index =
                 espaciosIniciales.indexWhere((item) => item.id == e.id);
             if (index != -1) {
+              imagenAnterior = espaciosIniciales[index].imagePath;
               espaciosIniciales[index] = e;
               notificarCambioInventario();
             }
           });
+          eliminarImagenHuerfana(imagenAnterior);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Espacio actualizado con éxito.')),
           );
         },
         onEliminar: (e) {
+          final objetos =
+              objetosIniciales.where((o) => o.espacioId == e.id).toList();
+          final imagenes = <String?>[
+            e.imagePath,
+            ...objetos.map((o) => o.imagePath),
+          ];
           setState(() {
+            registrarEliminacionEnHistorial(objetos.map((o) => o.id).toSet());
             espaciosIniciales.removeWhere((item) => item.id == e.id);
             objetosIniciales.removeWhere((item) => item.espacioId == e.id);
             notificarCambioInventario();
+          });
+          Future<void>.delayed(const Duration(seconds: 5), () {
+            eliminarImagenesHuerfanas(imagenes);
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Espacio eliminado correctamente.')),

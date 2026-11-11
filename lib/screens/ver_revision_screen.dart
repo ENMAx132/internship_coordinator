@@ -22,7 +22,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
   void initState() {
     super.initState();
     _ordenados = widget.objetos
-        .where((o) => o.estado.toLowerCase() == 'en revisión')
+        .where((o) => ObjetoInventario.esEstadoEnRevision(o.estado))
         .toList()
       ..sort((a, b) => b.valor.compareTo(a.valor));
   }
@@ -113,7 +113,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
       responsable: objeto.responsable,
       marca: objeto.marca,
       fechaRegistro: objeto.fechaRegistro,
-      fechaEnRevision: nuevoEstado == 'En revisión'
+      fechaEnRevision: ObjetoInventario.esEstadoEnRevision(nuevoEstado)
           ? DateTime.now()
           : objeto.fechaEnRevision,
       imagePath: objeto.imagePath,
@@ -127,7 +127,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
       }
       final indexLocal = _ordenados.indexWhere((item) => item.id == objeto.id);
       if (indexLocal != -1) {
-        if (nuevoEstado.toLowerCase() == 'en revisión') {
+        if (ObjetoInventario.esEstadoEnRevision(nuevoEstado)) {
           _ordenados[indexLocal] = actualizado;
         } else {
           _ordenados.removeAt(indexLocal);
