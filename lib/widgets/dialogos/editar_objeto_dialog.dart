@@ -83,7 +83,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
         espacioId: espacioIdSelec,
         categoria: categoriaSelec,
         estado: estadoSelec,
-        valor: valor ?? widget.objeto.valor,
+        valor: valor,
         responsable: respCtrl.text.trim().isEmpty
             ? widget.objeto.responsable
             : respCtrl.text.trim(),
@@ -153,7 +153,9 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SelectorImagenIcono(
-              emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
+              emoji: widget.espacios.isNotEmpty
+                  ? widget.espacios.first.emoji
+                  : '📦',
               imagePath: imagePathSelec,
               onImagePicked: (p) => setState(() => imagePathSelec = p),
             ),
@@ -167,8 +169,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               },
               decoration: InputDecoration(
                 labelText: 'Nombre del objeto',
-                errorText:
-                    _nombreInvalido ? 'El nombre es obligatorio' : null,
+                errorText: _nombreInvalido ? 'El nombre es obligatorio' : null,
               ),
             ),
             TextField(

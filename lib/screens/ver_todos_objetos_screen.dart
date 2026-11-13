@@ -6,7 +6,9 @@ import '../models/objeto_inventario.dart';
 import '../widgets/icono_widget.dart';
 
 class VerTodosObjetosScreen extends StatefulWidget {
-  const VerTodosObjetosScreen({super.key});
+  final String? apartadoId;
+
+  const VerTodosObjetosScreen({super.key, this.apartadoId});
 
   @override
   State<VerTodosObjetosScreen> createState() => _VerTodosObjetosScreenState();
@@ -20,10 +22,18 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
   final TextEditingController _precioMaxCtrl = TextEditingController();
   final TextEditingController _filtroTextoCtrl = TextEditingController();
 
-  List<Espacio> get _misEspacios => espaciosIniciales;
+  List<Espacio> get _misEspacios {
+    final apartadoId = widget.apartadoId;
+    if (apartadoId == null) return espaciosIniciales;
+    return espaciosIniciales.where((e) => e.apartadoId == apartadoId).toList();
+  }
 
   List<ObjetoInventario> get _todosLosObjetos {
-    final lista = [...objetosIniciales]..sort((a, b) => b.valor.compareTo(a.valor));
+    final ids = _misEspacios.map((e) => e.id).toSet();
+    final lista = objetosIniciales
+        .where((o) => ids.contains(o.espacioId))
+        .toList()
+      ..sort((a, b) => b.valor.compareTo(a.valor));
     return lista;
   }
 
@@ -42,9 +52,9 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
     if (q.isNotEmpty) {
       lista = lista
           .where((o) =>
-      o.nombre.toLowerCase().contains(q) ||
-          o.placa.toLowerCase().contains(q) ||
-          o.marca.toLowerCase().contains(q))
+              o.nombre.toLowerCase().contains(q) ||
+              o.placa.toLowerCase().contains(q) ||
+              o.marca.toLowerCase().contains(q))
           .toList();
     }
     if (_tipoSeleccionado != 'Tipo') {
@@ -87,10 +97,15 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Color(0xFF0F172A), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Todos los Objetos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A))),
+        title: const Text('Todos los Objetos',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Color(0xFF0F172A))),
       ),
       body: SafeArea(
         child: Column(
@@ -104,7 +119,8 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                   hintText: 'Buscar por nombre, placa o marca...',
                   prefixIcon: Icon(Icons.search, color: Color(0xFF94A3B8)),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ),
@@ -116,7 +132,10 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                   children: [
                     _construirFiltro(
                       valor: _tipoSeleccionado,
-                      opciones: <String>['Tipo', ...ObjetoInventario.categoriasDisponibles],
+                      opciones: <String>[
+                        'Tipo',
+                        ...ObjetoInventario.categoriasDisponibles
+                      ],
                       onCambio: (v) => setState(() => _tipoSeleccionado = v!),
                     ),
                     const SizedBox(width: 8),
@@ -128,7 +147,10 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                     const SizedBox(width: 8),
                     _construirFiltro(
                       valor: _estadoSeleccionado,
-                      opciones: <String>['Estado', ...ObjetoInventario.estadosDisponibles],
+                      opciones: <String>[
+                        'Estado',
+                        ...ObjetoInventario.estadosDisponibles
+                      ],
                       onCambio: (v) => setState(() => _estadoSeleccionado = v!),
                     ),
                   ],
@@ -142,7 +164,9 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                   Expanded(
                     child: TextField(
                       controller: _precioMinCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
                         labelText: 'Precio min',
                         border: OutlineInputBorder(),
@@ -154,7 +178,9 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                   Expanded(
                     child: TextField(
                       controller: _precioMaxCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
                         labelText: 'Precio max',
                         border: OutlineInputBorder(),
@@ -168,16 +194,16 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
             Expanded(
               child: _objetosFiltrados.isEmpty
                   ? const Center(
-                child: Text('No hay objetos con esos filtros'),
-              )
+                      child: Text('No hay objetos con esos filtros'),
+                    )
                   : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                itemCount: _objetosFiltrados.length,
-                itemBuilder: (context, index) {
-                  final o = _objetosFiltrados[index];
-                  return _construirItem(o);
-                },
-              ),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                      itemCount: _objetosFiltrados.length,
+                      itemBuilder: (context, index) {
+                        final o = _objetosFiltrados[index];
+                        return _construirItem(o);
+                      },
+                    ),
             ),
           ],
         ),
@@ -220,7 +246,10 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -233,7 +262,9 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
             child: IconoWidget(
-              imagePath: o.imagePath ?? espacio.imagePath,
+              imagePath: (o.imagePath != null && o.imagePath!.trim().isNotEmpty)
+                  ? o.imagePath
+                  : espacio.imagePath,
               emoji: espacio.emoji,
               fontSize: 20,
               size: 42,
@@ -247,12 +278,16 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               children: [
                 Text(
                   o.nombre,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B)),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '${o.placa} • ${o.categoria} • ${o.marca}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -262,12 +297,18 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
             children: [
               Text(
                 '\$${o.valor.toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6366F1)),
               ),
               const SizedBox(height: 3),
               Text(
                 o.estado,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF94A3B8)),
               ),
             ],
           ),

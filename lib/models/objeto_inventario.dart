@@ -97,7 +97,8 @@ class ObjetoInventario {
         responsable: json['responsable'] as String? ?? 'Sin asignar',
         imagePath: json['imagePath'] as String?,
         marca: json['marca'] as String?,
-        fechaRegistro: DateTime.tryParse(json['fechaRegistro'] as String? ?? ''),
+        fechaRegistro:
+            DateTime.tryParse(json['fechaRegistro'] as String? ?? ''),
         fechaEnRevision:
             DateTime.tryParse(json['fechaEnRevision'] as String? ?? ''),
       );

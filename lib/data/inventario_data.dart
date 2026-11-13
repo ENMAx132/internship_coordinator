@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -21,6 +21,19 @@ final List<ObjetoInventario> objetosIniciales = [];
 final List<RegistroRevision> historialRevisiones = [];
 
 const int _esquemaVersion = 1;
+
+/// Genera una placa libre con el formato ACT-001 para un objeto nuevo.
+String generarPlacaUnica() {
+  final usadas =
+      objetosIniciales.map((o) => o.placa.trim().toUpperCase()).toSet();
+  var numero = objetosIniciales.length + 1;
+  String placa;
+  do {
+    placa = 'ACT-${numero.toString().padLeft(3, '0')}';
+    numero++;
+  } while (usadas.contains(placa));
+  return placa;
+}
 
 Future<void> _guardadoEnCurso = Future<void>.value();
 
@@ -112,8 +125,7 @@ Future<void> _escribirInventario() async {
     'apartados': apartadosIniciales.map((e) => e.toJson()).toList(),
     'espacios': espaciosIniciales.map((e) => e.toJson()).toList(),
     'objetos': objetosIniciales.map((e) => e.toJson()).toList(),
-    'historialRevisiones':
-        historialRevisiones.map((e) => e.toJson()).toList(),
+    'historialRevisiones': historialRevisiones.map((e) => e.toJson()).toList(),
     'tutorialCompletado': tutorialCompletado.value,
   };
   try {
@@ -193,8 +205,7 @@ void registrarEliminacionEnHistorial(Set<String> objetoIds) {
   if (objetoIds.isEmpty) return;
   final ahora = DateTime.now();
   for (final registro in historialRevisiones) {
-    if (objetoIds.contains(registro.objetoId) &&
-        registro.fechaSalida == null) {
+    if (objetoIds.contains(registro.objetoId) && registro.fechaSalida == null) {
       registro.fechaSalida = ahora;
       registro.motivoSalida = 'Objeto eliminado';
     }

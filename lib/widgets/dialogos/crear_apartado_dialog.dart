@@ -130,59 +130,59 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Paso ${_paso + 1} de $_totalPasos',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-                Text(
-                  '${((_paso + 1) / _totalPasos * 100).round()}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: (_paso + 1) / _totalPasos,
-                minHeight: 6,
-                backgroundColor: const Color(0xFFEEF2FF),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF6366F1),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              alignment: Alignment.topCenter,
-              child: Column(
-                key: ValueKey(_paso),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _ayudas[_paso],
+                    'Paso ${_paso + 1} de $_totalPasos',
                     style: const TextStyle(
                       fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                  Text(
+                    '${((_paso + 1) / _totalPasos * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF94A3B8),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  _construirCampo(),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (_paso + 1) / _totalPasos,
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFEEF2FF),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                alignment: Alignment.topCenter,
+                child: Column(
+                  key: ValueKey(_paso),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _ayudas[_paso],
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _construirCampo(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -241,8 +241,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
           },
           decoration: InputDecoration(
             labelText: 'Nombre del apartado',
-            errorText:
-                _nombreInvalido ? 'El nombre es obligatorio' : null,
+            errorText: _nombreInvalido ? 'El nombre es obligatorio' : null,
           ),
           onSubmitted: (_) => _avanzar(),
         );

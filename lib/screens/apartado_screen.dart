@@ -260,9 +260,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
           final espacios =
               espaciosIniciales.where((e) => e.apartadoId == a.id).toList();
           final ids = espacios.map((e) => e.id).toSet();
-          final objetos = objetosIniciales
-              .where((o) => ids.contains(o.espacioId))
-              .toList();
+          final objetos =
+              objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
           final imagenes = <String?>[
             a.imagePath,
             ...espacios.map((e) => e.imagePath),

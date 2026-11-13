@@ -262,147 +262,150 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEEF2FF),
-              shape: BoxShape.circle,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-            child: Center(
-              child: Text(
-                '$prioridad',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6366F1),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEEF2FF),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '$prioridad',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6366F1),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.all(Radius.circular(12)),
+            const SizedBox(width: 8),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              child: IconoWidget(
+                imagePath:
+                    (o.imagePath != null && o.imagePath!.trim().isNotEmpty)
+                        ? o.imagePath
+                        : espacio.imagePath,
+                emoji: espacio.emoji,
+                fontSize: 20,
+                size: 42,
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: IconoWidget(
-              imagePath: o.imagePath ?? espacio.imagePath,
-              emoji: espacio.emoji,
-              fontSize: 20,
-              size: 42,
-              borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    o.nombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${o.categoria} • ${o.marca}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    espacio.nombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _formatearFecha(o.fechaEnRevision),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  o.nombre,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  '\$${o.valor.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: Color(0xFF6366F1),
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  '${o.categoria} • ${o.marca}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  espacio.nombre,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _formatearFecha(o.fechaEnRevision),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
+                  child: Text(
+                    o.estado,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB45309),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '\$${o.valor.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6366F1),
+            ReorderableDragStartListener(
+              index: index,
+              child: Container(
+                width: 36,
+                height: 44,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.drag_indicator,
+                  color: Color(0xFF94A3B8),
+                  size: 22,
                 ),
-              ),
-              const SizedBox(height: 3),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  o.estado,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFB45309),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          ReorderableDragStartListener(
-            index: index,
-            child: Container(
-              width: 36,
-              height: 44,
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.drag_indicator,
-                color: Color(0xFF94A3B8),
-                size: 22,
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

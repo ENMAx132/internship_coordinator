@@ -47,8 +47,7 @@ class RegistroRevision {
         fechaEntrada:
             DateTime.tryParse(json['fechaEntrada'] as String? ?? '') ??
                 DateTime.now(),
-        fechaSalida:
-            DateTime.tryParse(json['fechaSalida'] as String? ?? ''),
+        fechaSalida: DateTime.tryParse(json['fechaSalida'] as String? ?? ''),
         motivoSalida: json['motivoSalida'] as String?,
       );
 }

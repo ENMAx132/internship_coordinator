@@ -22,9 +22,8 @@ class TransferirDialog extends StatefulWidget {
 class _TransferirDialogState extends State<TransferirDialog> {
   String? _nuevoEspacioId;
 
-  List<Espacio> get _destinos => widget.espacios
-      .where((e) => e.id != widget.objeto.espacioId)
-      .toList();
+  List<Espacio> get _destinos =>
+      widget.espacios.where((e) => e.id != widget.objeto.espacioId).toList();
 
   @override
   void initState() {

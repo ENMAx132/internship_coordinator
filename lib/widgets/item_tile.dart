@@ -45,7 +45,10 @@ class ItemTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconoWidget(
-                imagePath: objeto.imagePath ?? espacioAsoc.imagePath,
+                imagePath: (objeto.imagePath != null &&
+                        objeto.imagePath!.trim().isNotEmpty)
+                    ? objeto.imagePath
+                    : espacioAsoc.imagePath,
                 emoji: espacioAsoc.emoji,
                 fontSize: 20,
                 size: 42,

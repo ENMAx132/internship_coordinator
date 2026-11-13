@@ -79,7 +79,8 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Editar Espacio', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text('Editar Espacio',
+          style: TextStyle(fontWeight: FontWeight.bold)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -95,7 +96,8 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: nombreCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre del espacio'),
+              decoration:
+                  const InputDecoration(labelText: 'Nombre del espacio'),
             ),
             TextField(
               controller: descCtrl,

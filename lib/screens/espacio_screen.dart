@@ -208,7 +208,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
       context: context,
       builder: (ctx) => CrearObjetoDialog(
         espacios: [widget.espacio],
-        placaInicial: 'ACT-00${_objetos.length + 1}',
+        placaInicial: generarPlacaUnica(),
         onGuardar: (obj) {
           setState(() {
             objetosIniciales.add(obj);

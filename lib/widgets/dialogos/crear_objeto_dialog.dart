@@ -76,12 +76,12 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     super.dispose();
   }
 
-  void _avanzar() {
-    if (_paso == 1 && nombreCtrl.text.trim().isEmpty) {
+  void _avanzar({bool omitir = false}) {
+    if (!omitir && _paso == 1 && nombreCtrl.text.trim().isEmpty) {
       setState(() => _nombreInvalido = true);
       return;
     }
-    if (_paso == 2) {
+    if (!omitir && _paso == 2) {
       final placa = placaCtrl.text.trim().isEmpty
           ? widget.placaInicial.trim()
           : placaCtrl.text.trim();
@@ -93,7 +93,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         return;
       }
     }
-    if (_paso == 5) {
+    if (!omitir && _paso == 5) {
       final texto = valorCtrl.text.trim();
       if (texto.isNotEmpty) {
         final valor = double.tryParse(texto.replaceAll(',', '.'));
@@ -123,7 +123,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
 
   void _omitir() {
     _limpiarPasoActual();
-    _avanzar();
+    _avanzar(omitir: true);
   }
 
   void _limpiarPasoActual() {
@@ -199,59 +199,59 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Paso ${_paso + 1} de $_totalPasos',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-                Text(
-                  '${((_paso + 1) / _totalPasos * 100).round()}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: (_paso + 1) / _totalPasos,
-                minHeight: 6,
-                backgroundColor: const Color(0xFFEEF2FF),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF6366F1),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              alignment: Alignment.topCenter,
-              child: Column(
-                key: ValueKey(_paso),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _ayudas[_paso],
+                    'Paso ${_paso + 1} de $_totalPasos',
                     style: const TextStyle(
                       fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                  Text(
+                    '${((_paso + 1) / _totalPasos * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF94A3B8),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  _construirCampo(),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (_paso + 1) / _totalPasos,
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFEEF2FF),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                alignment: Alignment.topCenter,
+                child: Column(
+                  key: ValueKey(_paso),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _ayudas[_paso],
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _construirCampo(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -287,7 +287,8 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     switch (_paso) {
       case 0:
         return SelectorImagenIcono(
-          emoji: widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
+          emoji:
+              widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
           imagePath: imagePathSelec,
           onImagePicked: (p) => setState(() => imagePathSelec = p),
         );
@@ -303,8 +304,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           },
           decoration: InputDecoration(
             labelText: 'Nombre del objeto',
-            errorText:
-                _nombreInvalido ? 'El nombre es obligatorio' : null,
+            errorText: _nombreInvalido ? 'El nombre es obligatorio' : null,
           ),
           onSubmitted: (_) => _avanzar(),
         );

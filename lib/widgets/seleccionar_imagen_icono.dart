@@ -89,7 +89,7 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
 
   Future<String> _rutaDestino() async {
     final Directory directorio = await getApplicationDocumentsDirectory();
-    return directorio.path + '/icono_' + DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
+    return '${directorio.path}/icono_${DateTime.now().millisecondsSinceEpoch}.jpg';
   }
 
   @override

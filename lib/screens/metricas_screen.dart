@@ -60,7 +60,12 @@ class _MetricasScreenState extends State<MetricasScreen> {
   void _reordenarApartados(int oldIndex, int newIndex) {
     final apartado = widget.apartados.removeAt(oldIndex);
     widget.apartados.insert(newIndex, apartado);
-    apartadoInicioId.value = widget.apartados.first.id;
+    final inicioSigueExistiendo = widget.apartados.any(
+      (a) => a.id == apartadoInicioId.value,
+    );
+    if (!inicioSigueExistiendo && widget.apartados.isNotEmpty) {
+      apartadoInicioId.value = widget.apartados.first.id;
+    }
     apartadosOrdenVersion.value++;
     notificarCambioInventario();
     setState(() {});
@@ -102,12 +107,12 @@ class _MetricasScreenState extends State<MetricasScreen> {
               }),
               const SizedBox(width: 8),
               ...widget.apartados.map(
-                    (apartado) => Padding(
+                (apartado) => Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _construirChip(
                     '${apartado.icono} ${apartado.nombre}',
                     _apartadoSeleccionadoId == apartado.id,
-                        () {
+                    () {
                       setState(() => _apartadoSeleccionadoId = apartado.id);
                     },
                   ),
@@ -137,7 +142,9 @@ class _MetricasScreenState extends State<MetricasScreen> {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const VerTodosObjetosScreen(),
+                      builder: (_) => VerTodosObjetosScreen(
+                        apartadoId: _apartadoSeleccionadoId,
+                      ),
                     ),
                   );
                   setState(() {});
@@ -371,7 +378,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
               children: [
                 Expanded(
                   child:
-                  _construirMiniMetrica('${espacios.length}', 'Espacios'),
+                      _construirMiniMetrica('${espacios.length}', 'Espacios'),
                 ),
                 Expanded(
                   child: _construirMiniMetrica('${objetos.length}', 'Objetos'),

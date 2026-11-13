@@ -269,8 +269,8 @@ class _TutorialCoachMarksState extends State<TutorialCoachMarks> {
       );
     }
 
-    final izquierda = (rect.center.dx - ancho / 2)
-        .clamp(16.0, pantalla.width - ancho - 16.0);
+    final izquierda =
+        (rect.center.dx - ancho / 2).clamp(16.0, pantalla.width - ancho - 16.0);
     final mostrarArriba = rect.top > 240;
 
     if (mostrarArriba) {
@@ -310,8 +310,7 @@ class _ScrimPainter extends CustomPainter {
       const Radius.circular(18),
     );
     final caminoRecorte = Path()..addRRect(recorte);
-    final camino =
-        Path.combine(PathOperation.difference, fondo, caminoRecorte);
+    final camino = Path.combine(PathOperation.difference, fondo, caminoRecorte);
     canvas.drawPath(camino, relleno);
     canvas.drawRRect(
       recorte,

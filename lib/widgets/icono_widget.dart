@@ -27,8 +27,7 @@ class IconoWidget extends StatelessWidget {
       contenido = Image.file(
         File(imagePath!),
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _construirFallback(),
+        errorBuilder: (context, error, stackTrace) => _construirFallback(),
       );
     } else {
       contenido = _construirFallback();

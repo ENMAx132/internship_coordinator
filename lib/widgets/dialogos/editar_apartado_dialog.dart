@@ -112,7 +112,8 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: nombreCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre del apartado'),
+              decoration:
+                  const InputDecoration(labelText: 'Nombre del apartado'),
             ),
             TextField(
               controller: descCtrl,
