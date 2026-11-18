@@ -233,7 +233,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                       itemCount: objetos.length,
                       buildDefaultDragHandles: false,
-                      onReorderItem: _reordenar,
+                      onReorder: _reordenar,
                       itemBuilder: (context, index) {
                         return _construirItem(
                           store,

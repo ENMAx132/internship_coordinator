@@ -229,7 +229,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
             itemCount: store.sections.length,
-            onReorderItem: _reordenar,
+            onReorder: _reordenar,
             itemBuilder: (context, index) {
               return _construirApartado(
                 store,
