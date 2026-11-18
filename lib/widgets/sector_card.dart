@@ -6,6 +6,7 @@ import 'icono_widget.dart';
 class SectorCard extends StatelessWidget {
   final Space space;
   final int count;
+  final int subspaces;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
@@ -14,6 +15,7 @@ class SectorCard extends StatelessWidget {
     super.key,
     required this.space,
     required this.count,
+    this.subspaces = 0,
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
@@ -64,10 +66,12 @@ class SectorCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '$count objs',
+                    subspaces > 0
+                        ? '$count objs · $subspaces sub'
+                        : '$count objs',
                     style: const TextStyle(
                       color: Color(0xFF4F46E5),
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

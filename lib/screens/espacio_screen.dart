@@ -5,12 +5,15 @@ import '../core/inventory_scope.dart';
 import '../data/inventory_store.dart';
 import '../models/inventory_item.dart';
 import '../models/space.dart';
+import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/dialogos/crear_objeto_dialog.dart';
+import '../widgets/dialogos/editar_espacio_dialog.dart';
 import '../widgets/dialogos/editar_objeto_dialog.dart';
 import '../widgets/dialogos/transferir_dialog.dart';
 import '../widgets/icono_widget.dart';
 import '../widgets/item_tile.dart';
 import '../widgets/offline_banner.dart';
+import '../widgets/sector_card.dart';
 
 class EspacioScreen extends StatefulWidget {
   final Space space;
@@ -75,6 +78,65 @@ class _EspacioScreenState extends State<EspacioScreen> {
     );
   }
 
+  void _dialogoCrearSubespacio() {
+    final store = _store;
+    final section = store.sectionById(_space.sectionId);
+    showDialog(
+      context: context,
+      builder: (ctx) => CrearEspacioDialog(
+        sections: section != null ? [section] : store.sections,
+        spaces: store.spaces,
+        emojis: store.catalogs.spaceEmojis,
+        initialSectionId: _space.sectionId,
+        initialParentSpaceId: _space.id,
+        title: 'Nuevo subespacio',
+        onCrear: (draft) {
+          _run(
+            () => store.createSpace(draft),
+            success: 'Subespacio creado correctamente.',
+          );
+        },
+      ),
+    );
+  }
+
+  void _dialogoEditarEspacio(Space space, {bool cerrarPantalla = false}) {
+    final store = _store;
+    showDialog(
+      context: context,
+      builder: (ctx) => EditarEspacioDialog(
+        space: space,
+        sections: store.sections,
+        spaces: store.spaces,
+        emojis: store.catalogs.spaceEmojis,
+        onActualizar: (draft) {
+          _run(
+            () => store.updateSpace(space.id, draft),
+            success: 'Espacio actualizado con éxito.',
+          );
+        },
+        onEliminar: () {
+          _run(
+            () async {
+              await store.deleteSpace(space.id);
+              if (cerrarPantalla && mounted) Navigator.pop(context);
+            },
+            success: 'Espacio eliminado correctamente.',
+          );
+        },
+      ),
+    );
+  }
+
+  void _abrirSubespacio(Space space) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EspacioScreen(space: space),
+      ),
+    );
+  }
+
   void _dialogoTransferir(InventoryItem item) {
     final store = _store;
     final spaces = store.spacesForSection(_space.sectionId);
@@ -122,7 +184,10 @@ class _EspacioScreenState extends State<EspacioScreen> {
     final store = _store;
     final canWrite = store.canWrite && !store.offline;
     final space = _space;
+    final parent = space.parentIn(store.spaces);
+    final subspaces = store.subspacesOf(space.id);
     final items = store.itemsForSpace(space.id);
+    final totalItems = store.itemsForSpaceTree(space.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -158,124 +223,278 @@ class _EspacioScreenState extends State<EspacioScreen> {
           ],
         ),
         actions: [
-          if (canWrite)
+          if (canWrite) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Color(0xFF6366F1)),
+              tooltip: 'Editar espacio',
+              onPressed: () =>
+                  _dialogoEditarEspacio(space, cerrarPantalla: true),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.create_new_folder_outlined,
+                color: Color(0xFF6366F1),
+              ),
+              tooltip: 'Agregar subespacio',
+              onPressed: _dialogoCrearSubespacio,
+            ),
             IconButton(
               icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
               tooltip: 'Agregar objeto',
               onPressed: _dialogoCrearObjeto,
             ),
+          ],
         ],
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
             if (store.offline)
               OfflineBanner(
                 message: 'Sin conexión. Los cambios están deshabilitados.',
                 onRetry: store.retryConnection,
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEEF2FF),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: IconoWidget(
-                        imageUrl: space.imageUrl,
-                        emoji: space.emoji,
-                        fontSize: 30,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            space.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            space.description,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            _construirCabecera(
+              space: space,
+              parent: parent,
+              itemsDirectos: items.length,
+              subespacios: subspaces.length,
+              itemsTotales: totalItems.length,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Objetos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Subespacios',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
-                  Text(
-                    '${items.length} en este espacio',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF94A3B8),
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+                Text(
+                  '${subspaces.length} en este espacio',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (subspaces.isEmpty)
+              _construirSubespaciosVacio(canWrite)
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: 1.15,
+                ),
+                itemCount: subspaces.length,
+                itemBuilder: (context, index) {
+                  final sub = subspaces[index];
+                  return SectorCard(
+                    space: sub,
+                    count: store.itemsForSpace(sub.id).length,
+                    subspaces: store.subspacesOf(sub.id).length,
+                    isSelected: false,
+                    onTap: () => _abrirSubespacio(sub),
+                    onLongPress: canWrite
+                        ? () => _dialogoEditarEspacio(sub)
+                        : () {},
+                  );
+                },
               ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Objetos',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  '${items.length} directos · ${totalItems.length} en total',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: items.isEmpty
-                  ? _construirListaVacia(canWrite)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return ItemTile(
-                          item: item,
-                          space: space,
-                          canWrite: canWrite,
-                          onTransferir: () => _dialogoTransferir(item),
-                          onLongPress: () => _dialogoEditarObjeto(item),
-                        );
-                      },
-                    ),
-            ),
+            const SizedBox(height: 10),
+            if (items.isEmpty)
+              _construirListaVacia(canWrite)
+            else
+              for (final item in items)
+                ItemTile(
+                  item: item,
+                  space: space,
+                  canWrite: canWrite,
+                  onTransferir: () => _dialogoTransferir(item),
+                  onLongPress: () => _dialogoEditarObjeto(item),
+                ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _construirCabecera({
+    required Space space,
+    required Space? parent,
+    required int itemsDirectos,
+    required int subespacios,
+    required int itemsTotales,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: IconoWidget(
+                  imageUrl: space.imageUrl,
+                  emoji: space.emoji,
+                  fontSize: 30,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (parent != null) ...[
+                      Text(
+                        'En: ${parent.pathLabel(_store.spaces)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
+                    Text(
+                      space.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      space.description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _construirEtiqueta('$itemsDirectos objetos directos'),
+              _construirEtiqueta('$subespacios subespacios'),
+              _construirEtiqueta('$itemsTotales objetos en total'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _construirEtiqueta(String texto) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        texto,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+
+  Widget _construirSubespaciosVacio(bool canWrite) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          const Text('🗂️', style: TextStyle(fontSize: 34)),
+          const SizedBox(height: 8),
+          const Text(
+            'Aún no hay subespacios aquí',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (canWrite) ...[
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: _dialogoCrearSubespacio,
+              icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+              label: const Text('Agregar subespacio'),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -283,13 +502,17 @@ class _EspacioScreenState extends State<EspacioScreen> {
   Widget _construirListaVacia(bool canWrite) {
     return Container(
       padding: const EdgeInsets.all(24),
-      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Column(
         children: [
           const Text('📦', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 8),
           const Text(
             'Aún no hay objetos en este espacio',
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF94A3B8),
               fontWeight: FontWeight.w600,

@@ -198,8 +198,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
     final space = item != null ? store.spaceById(item.spaceId) : null;
     final nombre = item?.name ?? review.itemName;
     final placa = item?.code ?? review.itemCode;
-    final spaceName =
-        space?.name ?? review.spaceName ?? item?.spaceName ?? 'Sin espacio';
+    final spaceName = space != null
+        ? store.spacePath(space.id)
+        : (review.spaceName ?? item?.spaceName ?? 'Sin espacio');
     final emoji = space?.emoji ?? item?.spaceEmoji ?? '📍';
     final imageUrl = item?.imageUrl ?? review.imageUrl;
     final activo = review.isActive;
@@ -436,7 +437,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${item.code} · ${space?.name ?? item.spaceName}',
+                  '${item.code} · '
+                  '${space != null ? store.spacePath(space.id) : item.spaceName}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

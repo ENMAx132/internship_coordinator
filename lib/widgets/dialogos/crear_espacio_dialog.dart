@@ -2,18 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../../models/drafts.dart';
 import '../../models/section.dart';
+import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearEspacioDialog extends StatefulWidget {
   final ValueChanged<SpaceDraft> onCrear;
   final List<Section> sections;
+  final List<Space> spaces;
   final List<String> emojis;
+  final int? initialSectionId;
+  final int? initialParentSpaceId;
+  final String title;
 
   const CrearEspacioDialog({
     super.key,
     required this.onCrear,
     required this.sections,
+    this.spaces = const [],
     this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
+    this.initialSectionId,
+    this.initialParentSpaceId,
+    this.title = 'Nuevo Espacio',
   });
 
   @override
@@ -28,10 +37,23 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   bool _emojisVisibles = false;
   bool _nombreInvalido = false;
   late int sectionIdSelec;
+  int parentSpaceIdSelec = 0;
 
   List<String> get _emojis => widget.emojis.isEmpty
       ? const ['🏢', '💻', '📊', '📦']
       : widget.emojis;
+
+  List<Space> get _parentOptions {
+    final options = widget.spaces
+        .where((space) => space.sectionId == sectionIdSelec)
+        .toList();
+    options.sort(
+      (a, b) => a.pathLabel(widget.spaces).compareTo(
+            b.pathLabel(widget.spaces),
+          ),
+    );
+    return options;
+  }
 
   int _paso = 0;
 
@@ -40,6 +62,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
     '¿Cómo se llama el espacio?',
     'Descripción breve (opcional)',
     '¿A qué apartado pertenece?',
+    '¿Dentro de qué espacio estará? (opcional)',
   ];
 
   int get _totalPasos => _ayudas.length;
@@ -49,8 +72,9 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   @override
   void initState() {
     super.initState();
-    sectionIdSelec =
-        widget.sections.isNotEmpty ? widget.sections.first.id : 0;
+    sectionIdSelec = widget.initialSectionId ??
+        (widget.sections.isNotEmpty ? widget.sections.first.id : 0);
+    parentSpaceIdSelec = widget.initialParentSpaceId ?? 0;
   }
 
   @override
@@ -102,10 +126,13 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
       case 2:
         descCtrl.clear();
         break;
+      case 3:
+        sectionIdSelec = widget.initialSectionId ??
+            (widget.sections.isNotEmpty ? widget.sections.first.id : 0);
+        parentSpaceIdSelec = 0;
+        break;
       default:
-        if (widget.sections.isNotEmpty) {
-          sectionIdSelec = widget.sections.first.id;
-        }
+        parentSpaceIdSelec = 0;
         break;
     }
   }
@@ -121,6 +148,8 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             ? 'Área de trabajo'
             : descCtrl.text.trim(),
         emoji: emojiSelec,
+        parentSpaceId:
+            parentSpaceIdSelec == 0 ? null : parentSpaceIdSelec,
         localImagePath: localImagePath,
       ),
     );
@@ -132,9 +161,9 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
-        'Nuevo Espacio',
-        style: TextStyle(fontWeight: FontWeight.bold),
+      title: Text(
+        widget.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       content: SingleChildScrollView(
         child: SizedBox(
@@ -265,7 +294,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
           decoration: const InputDecoration(labelText: 'Descripción breve'),
           onSubmitted: (_) => _avanzar(),
         );
-      default:
+      case 3:
         return DropdownButtonFormField<int>(
           initialValue: sectionIdSelec,
           decoration: const InputDecoration(labelText: 'Apartado'),
@@ -276,7 +305,48 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             );
           }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => sectionIdSelec = val);
+            if (val != null) {
+              setState(() {
+                sectionIdSelec = val;
+                final valido = widget.spaces.any(
+                  (space) =>
+                      space.id == parentSpaceIdSelec &&
+                      space.sectionId == sectionIdSelec,
+                );
+                if (!valido) parentSpaceIdSelec = 0;
+              });
+            }
+          },
+        );
+      default:
+        final options = _parentOptions;
+        final valor = options.any((space) => space.id == parentSpaceIdSelec)
+            ? parentSpaceIdSelec
+            : 0;
+        return DropdownButtonFormField<int>(
+          key: ValueKey('parent_${sectionIdSelec}_$valor'),
+          initialValue: valor,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Espacio padre (opcional)',
+          ),
+          items: [
+            const DropdownMenuItem(
+              value: 0,
+              child: Text('Sin espacio padre (raíz)'),
+            ),
+            ...options.map((space) {
+              return DropdownMenuItem(
+                value: space.id,
+                child: Text(
+                  '${space.emoji} ${space.pathLabel(widget.spaces)}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }),
+          ],
+          onChanged: (val) {
+            if (val != null) setState(() => parentSpaceIdSelec = val);
           },
         );
     }

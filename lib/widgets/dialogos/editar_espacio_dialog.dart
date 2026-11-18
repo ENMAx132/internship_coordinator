@@ -10,6 +10,7 @@ class EditarEspacioDialog extends StatefulWidget {
   final ValueChanged<SpaceDraft> onActualizar;
   final VoidCallback onEliminar;
   final List<Section> sections;
+  final List<Space> spaces;
   final List<String> emojis;
 
   const EditarEspacioDialog({
@@ -18,6 +19,7 @@ class EditarEspacioDialog extends StatefulWidget {
     required this.onActualizar,
     required this.onEliminar,
     required this.sections,
+    this.spaces = const [],
     this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
   });
 
@@ -31,10 +33,32 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
   late String emojiSelec;
   String? localImagePath;
   late int sectionIdSelec;
+  late int parentSpaceIdSelec;
 
   List<String> get _emojis => widget.emojis.isEmpty
       ? const ['🏢', '💻', '📊', '📦']
       : widget.emojis;
+
+  List<Space> get _parentOptions {
+    final descendants = Space.descendantIdsOf(
+      widget.space.id,
+      widget.spaces,
+    );
+    final options = widget.spaces
+        .where(
+          (space) =>
+              space.sectionId == sectionIdSelec &&
+              space.id != widget.space.id &&
+              !descendants.contains(space.id),
+        )
+        .toList();
+    options.sort(
+      (a, b) => a.pathLabel(widget.spaces).compareTo(
+            b.pathLabel(widget.spaces),
+          ),
+    );
+    return options;
+  }
 
   @override
   void initState() {
@@ -43,6 +67,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     descCtrl = TextEditingController(text: widget.space.description);
     emojiSelec = widget.space.emoji;
     sectionIdSelec = widget.space.sectionId;
+    parentSpaceIdSelec = widget.space.parentSpaceId ?? 0;
   }
 
   @override
@@ -61,7 +86,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
         title: const Text('Eliminar espacio'),
         content: Text(
           '¿Seguro que quieres eliminar "${widget.space.name}"? '
-          'También se eliminarán sus objetos.',
+          'También se eliminarán sus subespacios y todos sus objetos.',
         ),
         actions: [
           TextButton(
@@ -90,9 +115,9 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
-        'Editar Espacio',
-        style: TextStyle(fontWeight: FontWeight.bold),
+      title: Text(
+        widget.space.isRoot ? 'Editar Espacio' : 'Editar Subespacio',
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -128,7 +153,53 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
                 );
               }).toList(),
               onChanged: (val) {
-                if (val != null) setState(() => sectionIdSelec = val);
+                if (val != null) {
+                  setState(() {
+                    sectionIdSelec = val;
+                    final valido = widget.spaces.any(
+                      (space) =>
+                          space.id == parentSpaceIdSelec &&
+                          space.sectionId == sectionIdSelec &&
+                          space.id != widget.space.id,
+                    );
+                    if (!valido) parentSpaceIdSelec = 0;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              key: ValueKey(
+                'edit_parent_${sectionIdSelec}_$parentSpaceIdSelec',
+              ),
+              initialValue: _parentOptions.any(
+                (space) => space.id == parentSpaceIdSelec,
+              )
+                  ? parentSpaceIdSelec
+                  : 0,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Espacio padre (opcional)',
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: 0,
+                  child: Text('Sin espacio padre (raíz)'),
+                ),
+                ..._parentOptions.map((space) {
+                  return DropdownMenuItem(
+                    value: space.id,
+                    child: Text(
+                      '${space.emoji} ${space.pathLabel(widget.spaces)}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }),
+              ],
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => parentSpaceIdSelec = val);
+                }
               },
             ),
           ],
@@ -158,6 +229,9 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
                       ? 'Área de trabajo'
                       : descCtrl.text.trim(),
                   emoji: emojiSelec,
+                  parentSpaceId: parentSpaceIdSelec == 0
+                      ? null
+                      : parentSpaceIdSelec,
                   imageUrl: widget.space.imageUrl,
                   localImagePath: localImagePath,
                 ),

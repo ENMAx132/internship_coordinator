@@ -51,7 +51,7 @@ class _TransferirDialogState extends State<TransferirDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Mover "${widget.item.name}" a otra sala:'),
+          Text('Mover "${widget.item.name}" a otro espacio o subespacio:'),
           const SizedBox(height: 12),
           if (destinos.isEmpty)
             const Text(
@@ -61,11 +61,15 @@ class _TransferirDialogState extends State<TransferirDialog> {
           else
             DropdownButtonFormField<int>(
               initialValue: _nuevoSpaceId,
+              isExpanded: true,
               items: destinos
                   .map(
                     (e) => DropdownMenuItem(
                       value: e.id,
-                      child: Text('${e.emoji} ${e.name}'),
+                      child: Text(
+                        '${e.emoji} ${e.pathLabel(widget.spaces)}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(),

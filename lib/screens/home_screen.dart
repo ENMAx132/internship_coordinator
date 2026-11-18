@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
 
   List<Space> _spacesOf(InventoryStore store, int sectionId) => [
-        ...store.spacesForSection(sectionId),
+        ...store.rootSpacesForSection(sectionId),
         if (_demoSpace != null && _demoSpace!.sectionId == sectionId)
           _demoSpace!,
         if (store.tutorialSpace != null &&
@@ -517,6 +517,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => CrearEspacioDialog(
         sections: store.sections,
+        spaces: store.spaces,
+        emojis: store.catalogs.spaceEmojis,
         onCrear: (draft) {
           _run(
             () => store.createSpace(draft),
@@ -1315,6 +1317,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
   }
 
   Widget _construirPagina(Section section) {
+    final store = InventoryScope.of(context);
     final spaces = widget.spacesOf(section.id);
     final totalItems = widget.itemsOfSection(section.id).length;
 
@@ -1436,6 +1439,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
                     return SectorCard(
                       space: space,
                       count: widget.itemsOfSpace(space.id).length,
+                      subspaces: store.subspacesOf(space.id).length,
                       isSelected: false,
                       onTap: () => widget.onOpenSpace(space),
                       onLongPress: () => widget.onOpenSection(section),

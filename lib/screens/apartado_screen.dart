@@ -88,7 +88,9 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
       context: context,
       builder: (ctx) => CrearEspacioDialog(
         sections: [_section],
+        spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
+        initialSectionId: _section.id,
         onCrear: (draft) {
           _run(
             () => store.createSpace(draft),
@@ -106,6 +108,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
       builder: (ctx) => EditarEspacioDialog(
         space: space,
         sections: store.sections,
+        spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
         onActualizar: (draft) {
           _run(
@@ -128,7 +131,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     final store = _store;
     final canWrite = store.canWrite && !store.offline;
     final section = _section;
-    final spaces = store.spacesForSection(section.id);
+    final spaces = store.rootSpacesForSection(section.id);
+    final totalSpaces = store.spacesForSection(section.id).length;
     final itemCount = store.itemsForSection(section.id).length;
 
     return Scaffold(
@@ -208,7 +212,9 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${spaces.length} espacios • $itemCount objetos',
+                            '${spaces.length} espacios • '
+                            '${totalSpaces - spaces.length} subespacios • '
+                            '$itemCount objetos',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -275,6 +281,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         return SectorCard(
                           space: space,
                           count: store.itemsForSpace(space.id).length,
+                          subspaces: store.subspacesOf(space.id).length,
                           isSelected: false,
                           onTap: () => _abrirEspacio(space),
                           onLongPress: canWrite

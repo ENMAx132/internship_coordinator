@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../core/app_config.dart';
+import '../core/image_headers.dart';
+import '../core/inventory_scope.dart';
+
 /// Permite elegir el icono de un producto con una imagen de la galería o la
 /// cámara. Devuelve la ruta local elegida; el store la sube a la API.
 class SelectorImagenIcono extends StatefulWidget {
@@ -179,10 +183,13 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
         errorBuilder: (context, error, stackTrace) => _construirFallback(),
       );
     }
-    if (_remoteUrl != null && _remoteUrl!.trim().isNotEmpty) {
+    final remoteUrl = AppConfig.resolveImageUrl(_remoteUrl);
+    if (remoteUrl != null) {
+      final token = InventoryScope.maybeOf(context)?.session.token;
       return Image.network(
-        _remoteUrl!,
+        remoteUrl,
         fit: BoxFit.cover,
+        headers: imageRequestHeaders(remoteUrl, token),
         errorBuilder: (context, error, stackTrace) => _construirFallback(),
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;

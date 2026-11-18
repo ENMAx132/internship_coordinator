@@ -249,7 +249,10 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               items: widget.spaces.map((e) {
                 return DropdownMenuItem(
                   value: e.id,
-                  child: Text('${e.emoji} ${e.name}'),
+                  child: Text(
+                    '${e.emoji} ${e.pathLabel(widget.spaces)}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               }).toList(),
               onChanged: (val) {

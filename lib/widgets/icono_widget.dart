@@ -1,4 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../core/app_config.dart';
+import '../core/image_headers.dart';
+import '../core/inventory_scope.dart';
 
 /// Muestra la imagen remota de un icono si existe y el emoji como respaldo.
 class IconoWidget extends StatelessWidget {
@@ -20,12 +25,19 @@ class IconoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final diametro = size ?? fontSize * 2.2;
+    final url = AppConfig.resolveImageUrl(imageUrl);
     Widget contenido;
-    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+    if (url != null) {
       contenido = Image.network(
-        imageUrl!,
+        url,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _construirFallback(),
+        headers: _headersFor(context, url),
+        errorBuilder: (context, error, stackTrace) {
+          if (kDebugMode) {
+            debugPrint('No se pudo cargar el icono $url: $error');
+          }
+          return _construirFallback();
+        },
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return _construirFallback();
@@ -45,6 +57,11 @@ class IconoWidget extends StatelessWidget {
           ? ClipOval(child: contenido)
           : ClipRRect(borderRadius: borderRadius!, child: contenido),
     );
+  }
+
+  Map<String, String>? _headersFor(BuildContext context, String url) {
+    final token = InventoryScope.maybeOf(context)?.session.token;
+    return imageRequestHeaders(url, token);
   }
 
   Widget _construirFallback() {

@@ -338,7 +338,9 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    space?.name ?? item.spaceName,
+                    space != null
+                        ? store.spacePath(space.id)
+                        : item.spaceName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
