@@ -1,98 +1,122 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_settings.dart';
-import '../data/inventario_data.dart';
-import '../models/apartado.dart';
+import '../core/api_exception.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/inventory_item.dart';
+import '../models/section.dart';
+import '../models/space.dart';
 import '../widgets/icono_widget.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
+import '../widgets/offline_banner.dart';
 import 'ver_revision_screen.dart';
 import 'ver_todos_objetos_screen.dart';
 
 class MetricasScreen extends StatefulWidget {
-  final List<Apartado> apartados;
+  const MetricasScreen({super.key, required this.onLogout});
 
-  const MetricasScreen({super.key, required this.apartados});
+  final VoidCallback onLogout;
 
   @override
   State<MetricasScreen> createState() => _MetricasScreenState();
 }
 
 class _MetricasScreenState extends State<MetricasScreen> {
-  String? _apartadoSeleccionadoId;
+  int? _sectionIdSeleccionada;
 
-  List<Espacio> get _espacios {
-    if (_apartadoSeleccionadoId == null) return espaciosIniciales;
-    return espaciosIniciales
-        .where((e) => e.apartadoId == _apartadoSeleccionadoId)
-        .toList();
+  InventoryStore get _store => InventoryScope.of(context);
+
+  List<Space> _spaces(InventoryStore store) {
+    if (_sectionIdSeleccionada == null) return store.spaces;
+    return store.spacesForSection(_sectionIdSeleccionada!);
   }
 
-  List<ObjetoInventario> get _objetos {
-    final ids = _espacios.map((e) => e.id).toSet();
-    return objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
+  List<InventoryItem> _items(InventoryStore store) {
+    if (_sectionIdSeleccionada == null) return store.items;
+    return store.itemsForSection(_sectionIdSeleccionada!);
   }
 
-  double get _valorTotal {
-    return _objetos.fold(0.0, (total, objeto) => total + objeto.valor);
-  }
+  double _valorTotal(List<InventoryItem> items) =>
+      items.fold(0.0, (total, item) => total + item.value);
 
-  int get _objetosEnRevision {
-    return _objetos
-        .where((o) => ObjetoInventario.esEstadoEnRevision(o.estado))
-        .length;
-  }
+  int _enRevision(List<InventoryItem> items) =>
+      items.where((item) => item.isInReview).length;
 
-  List<Espacio> _espaciosDe(Apartado apartado) {
-    return espaciosIniciales.where((e) => e.apartadoId == apartado.id).toList();
-  }
+  List<Space> _spacesDe(InventoryStore store, Section section) =>
+      store.spacesForSection(section.id);
 
-  List<ObjetoInventario> _objetosDe(Apartado apartado) {
-    final ids = _espaciosDe(apartado).map((e) => e.id).toSet();
-    return objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
-  }
+  List<InventoryItem> _itemsDe(InventoryStore store, Section section) =>
+      store.itemsForSection(section.id);
 
-  double _valorDe(Apartado apartado) {
-    return _objetosDe(apartado)
-        .fold(0.0, (total, objeto) => total + objeto.valor);
-  }
-
-  void _reordenarApartados(int oldIndex, int newIndex) {
-    final apartado = widget.apartados.removeAt(oldIndex);
-    widget.apartados.insert(newIndex, apartado);
-    final inicioSigueExistiendo = widget.apartados.any(
-      (a) => a.id == apartadoInicioId.value,
-    );
-    if (!inicioSigueExistiendo && widget.apartados.isNotEmpty) {
-      apartadoInicioId.value = widget.apartados.first.id;
+  Future<void> _reordenar(int oldIndex, int newIndex) async {
+    final store = _store;
+    if (!store.canWrite || store.offline) return;
+    final ids = store.sections.map((section) => section.id).toList();
+    if (oldIndex < 0 || oldIndex >= ids.length) return;
+    final movido = ids.removeAt(oldIndex);
+    ids.insert(newIndex.clamp(0, ids.length), movido);
+    try {
+      await store.reorderSections(ids);
+    } on ApiException catch (error) {
+      store.handleError(error);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(messageForApiError(error))),
+      );
     }
-    apartadosOrdenVersion.value++;
-    notificarCambioInventario();
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = _store;
+    final canWrite = store.canWrite && !store.offline;
+    final spaces = _spaces(store);
+    final items = _items(store);
+    final totalValue = _valorTotal(items);
+    final inReview = _enRevision(items);
+
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        if (store.offline)
+          OfflineBanner(
+            message: 'Sin conexión. Mostrando métricas guardadas.',
+            onRetry: store.retryConnection,
+          ),
+        Row(
           children: [
-            Text(
-              'Métricas',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1E293B),
-                letterSpacing: -0.5,
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Métricas',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E293B),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Resumen general y por apartado',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              'Resumen general y por apartado',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+            IconButton(
+              onPressed: widget.onLogout,
+              tooltip: 'Cerrar sesión',
+              icon: const Icon(
+                Icons.logout,
+                size: 20,
+                color: Color(0xFF94A3B8),
+              ),
             ),
           ],
         ),
@@ -102,18 +126,18 @@ class _MetricasScreenState extends State<MetricasScreen> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              _construirChip('Todos', _apartadoSeleccionadoId == null, () {
-                setState(() => _apartadoSeleccionadoId = null);
+              _construirChip('Todos', _sectionIdSeleccionada == null, () {
+                setState(() => _sectionIdSeleccionada = null);
               }),
               const SizedBox(width: 8),
-              ...widget.apartados.map(
-                (apartado) => Padding(
+              ...store.sections.map(
+                (section) => Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _construirChip(
-                    '${apartado.icono} ${apartado.nombre}',
-                    _apartadoSeleccionadoId == apartado.id,
+                    '${section.icon} ${section.name}',
+                    _sectionIdSeleccionada == section.id,
                     () {
-                      setState(() => _apartadoSeleccionadoId = apartado.id);
+                      setState(() => _sectionIdSeleccionada = section.id);
                     },
                   ),
                 ),
@@ -128,7 +152,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
               child: _construirMetrica(
                 icono: Icons.grid_view_rounded,
                 etiqueta: 'Espacios',
-                valor: '${_espacios.length}',
+                valor: '${spaces.length}',
               ),
             ),
             const SizedBox(width: 12),
@@ -136,18 +160,17 @@ class _MetricasScreenState extends State<MetricasScreen> {
               child: _construirMetrica(
                 icono: Icons.inventory_2_outlined,
                 etiqueta: 'Objetos',
-                valor: '${_objetos.length}',
+                valor: '${items.length}',
                 onTap: () async {
-                  // Navega a la pantalla de todos los objetos y actualiza al volver
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => VerTodosObjetosScreen(
-                        apartadoId: _apartadoSeleccionadoId,
+                        sectionId: _sectionIdSeleccionada,
                       ),
                     ),
                   );
-                  setState(() {});
+                  if (mounted) setState(() {});
                 },
               ),
             ),
@@ -160,7 +183,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
               child: _construirMetrica(
                 icono: Icons.attach_money,
                 etiqueta: 'Valor total',
-                valor: '\$${_valorTotal.toStringAsFixed(2)}',
+                valor: '\$${totalValue.toStringAsFixed(2)}',
               ),
             ),
             const SizedBox(width: 12),
@@ -168,21 +191,21 @@ class _MetricasScreenState extends State<MetricasScreen> {
               child: _construirMetrica(
                 icono: Icons.build_outlined,
                 etiqueta: 'En revisión',
-                valor: '$_objetosEnRevision',
+                valor: '$inReview',
                 onTap: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => VerRevisionScreen(objetos: _objetos),
+                      builder: (_) => const VerRevisionScreen(),
                     ),
                   );
-                  setState(() {});
+                  if (mounted) setState(() {});
                 },
               ),
             ),
           ],
         ),
-        if (_apartadoSeleccionadoId == null) ...[
+        if (_sectionIdSeleccionada == null) ...[
           const SizedBox(height: 24),
           const Text(
             'Detalle por apartado',
@@ -193,19 +216,27 @@ class _MetricasScreenState extends State<MetricasScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Arrastra desde el ícono para cambiar el orden de los apartados en Inicio.',
-            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+          Text(
+            canWrite
+                ? 'Arrastra desde el ícono para cambiar el orden de los '
+                    'apartados en Inicio.'
+                : 'Resumen de cada apartado.',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
           ),
           const SizedBox(height: 10),
           ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
-            itemCount: widget.apartados.length,
-            onReorderItem: _reordenarApartados,
+            itemCount: store.sections.length,
+            onReorderItem: _reordenar,
             itemBuilder: (context, index) {
-              return _construirApartado(widget.apartados[index], index);
+              return _construirApartado(
+                store,
+                store.sections[index],
+                index,
+                canWrite,
+              );
             },
           ),
         ],
@@ -309,13 +340,18 @@ class _MetricasScreenState extends State<MetricasScreen> {
     );
   }
 
-  Widget _construirApartado(Apartado apartado, int index) {
-    final espacios = _espaciosDe(apartado);
-    final objetos = _objetosDe(apartado);
+  Widget _construirApartado(
+    InventoryStore store,
+    Section section,
+    int index,
+    bool canWrite,
+  ) {
+    final spaces = _spacesDe(store, section);
+    final items = _itemsDe(store, section);
     return GestureDetector(
-      key: ValueKey(apartado.id),
+      key: ValueKey(section.id),
       onTap: () {
-        setState(() => _apartadoSeleccionadoId = apartado.id);
+        setState(() => _sectionIdSeleccionada = section.id);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -337,14 +373,14 @@ class _MetricasScreenState extends State<MetricasScreen> {
             Row(
               children: [
                 IconoWidget(
-                  imagePath: apartado.imagePath,
-                  emoji: apartado.icono,
+                  imageUrl: section.imageUrl,
+                  emoji: section.icon,
                   fontSize: 22,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    apartado.nombre,
+                    section.name,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -357,35 +393,42 @@ class _MetricasScreenState extends State<MetricasScreen> {
                   size: 12,
                   color: Color(0xFF94A3B8),
                 ),
-                const SizedBox(width: 4),
-                ReorderableDragStartListener(
-                  index: index,
-                  child: Container(
-                    width: 30,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.drag_indicator,
-                      color: Color(0xFF94A3B8),
-                      size: 22,
+                if (canWrite) ...[
+                  const SizedBox(width: 4),
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: Container(
+                      width: 30,
+                      height: 32,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.drag_indicator,
+                        color: Color(0xFF94A3B8),
+                        size: 22,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child:
-                      _construirMiniMetrica('${espacios.length}', 'Espacios'),
-                ),
-                Expanded(
-                  child: _construirMiniMetrica('${objetos.length}', 'Objetos'),
+                  child: _construirMiniMetrica(
+                    '${spaces.length}',
+                    'Espacios',
+                  ),
                 ),
                 Expanded(
                   child: _construirMiniMetrica(
-                    '\$${_valorDe(apartado).toStringAsFixed(0)}',
+                    '${items.length}',
+                    'Objetos',
+                  ),
+                ),
+                Expanded(
+                  child: _construirMiniMetrica(
+                    '\$${_valorTotal(items).toStringAsFixed(0)}',
                     'Valor',
                   ),
                 ),

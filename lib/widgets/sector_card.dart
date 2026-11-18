@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
-import '../models/espacio.dart';
+
+import '../models/space.dart';
 import 'icono_widget.dart';
 
 class SectorCard extends StatelessWidget {
-  final Espacio espacio;
-  final int conteo;
+  final Space space;
+  final int count;
   final bool isSelected;
   final VoidCallback onTap;
-  final VoidCallback onLongPress; // <-- Añadido
+  final VoidCallback onLongPress;
 
   const SectorCard({
     super.key,
-    required this.espacio,
-    required this.conteo,
+    required this.space,
+    required this.count,
     required this.isSelected,
     required this.onTap,
-    required this.onLongPress, // <-- Añadido
+    required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress, // <-- Vinculado aquí
+      onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
@@ -51,8 +52,8 @@ class SectorCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconoWidget(
-                  imagePath: espacio.imagePath,
-                  emoji: espacio.emoji,
+                  imageUrl: space.imageUrl,
+                  emoji: space.emoji,
                   fontSize: 28,
                 ),
                 Container(
@@ -63,7 +64,7 @@ class SectorCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '$conteo objs',
+                    '$count objs',
                     style: const TextStyle(
                       color: Color(0xFF4F46E5),
                       fontSize: 11,
@@ -77,7 +78,7 @@ class SectorCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  espacio.nombre,
+                  space.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -88,7 +89,7 @@ class SectorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  espacio.descripcion,
+                  space.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

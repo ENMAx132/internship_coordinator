@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../../models/apartado.dart';
-import '../../models/espacio.dart';
+import '../../models/drafts.dart';
+import '../../models/section.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearEspacioDialog extends StatefulWidget {
-  final ValueChanged<Espacio> onCrear;
-  final List<Apartado> apartados;
+  final ValueChanged<SpaceDraft> onCrear;
+  final List<Section> sections;
+  final List<String> emojis;
 
   const CrearEspacioDialog({
     super.key,
     required this.onCrear,
-    required this.apartados,
+    required this.sections,
+    this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
   });
 
   @override
@@ -22,11 +24,14 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   final nombreCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   String emojiSelec = '🏢';
-  String? imagePathSelec;
+  String? localImagePath;
   bool _emojisVisibles = false;
   bool _nombreInvalido = false;
-  final emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
-  late String apartadoIdSelec;
+  late int sectionIdSelec;
+
+  List<String> get _emojis => widget.emojis.isEmpty
+      ? const ['🏢', '💻', '📊', '📦']
+      : widget.emojis;
 
   int _paso = 0;
 
@@ -44,8 +49,8 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   @override
   void initState() {
     super.initState();
-    apartadoIdSelec =
-        widget.apartados.isNotEmpty ? widget.apartados.first.id : '';
+    sectionIdSelec =
+        widget.sections.isNotEmpty ? widget.sections.first.id : 0;
   }
 
   @override
@@ -89,7 +94,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
     switch (_paso) {
       case 0:
         emojiSelec = '🏢';
-        imagePathSelec = null;
+        localImagePath = null;
         break;
       case 1:
         nombreCtrl.clear();
@@ -98,8 +103,8 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
         descCtrl.clear();
         break;
       default:
-        if (widget.apartados.isNotEmpty) {
-          apartadoIdSelec = widget.apartados.first.id;
+        if (widget.sections.isNotEmpty) {
+          sectionIdSelec = widget.sections.first.id;
         }
         break;
     }
@@ -107,17 +112,16 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
 
   void _crear() {
     widget.onCrear(
-      Espacio(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        nombre: nombreCtrl.text.trim().isEmpty
+      SpaceDraft(
+        sectionId: sectionIdSelec,
+        name: nombreCtrl.text.trim().isEmpty
             ? 'Sin nombre'
             : nombreCtrl.text.trim(),
-        descripcion: descCtrl.text.trim().isEmpty
+        description: descCtrl.text.trim().isEmpty
             ? 'Área de trabajo'
             : descCtrl.text.trim(),
         emoji: emojiSelec,
-        imagePath: imagePathSelec,
-        apartadoId: apartadoIdSelec,
+        localImagePath: localImagePath,
       ),
     );
     Navigator.pop(context);
@@ -230,10 +234,10 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
       case 0:
         return SelectorImagenIcono(
           emoji: emojiSelec,
-          imagePath: imagePathSelec,
-          emojis: emojis,
+          localImagePath: localImagePath,
+          emojis: _emojis,
           size: 104,
-          onImagePicked: (p) => setState(() => imagePathSelec = p),
+          onImagePicked: (p) => setState(() => localImagePath = p),
           onEmojiChange: (e) => setState(() => emojiSelec = e),
           onEmojisVisibilityChanged: (visible) =>
               setState(() => _emojisVisibles = visible),
@@ -262,17 +266,17 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
           onSubmitted: (_) => _avanzar(),
         );
       default:
-        return DropdownButtonFormField<String>(
-          initialValue: apartadoIdSelec,
+        return DropdownButtonFormField<int>(
+          initialValue: sectionIdSelec,
           decoration: const InputDecoration(labelText: 'Apartado'),
-          items: widget.apartados.map((e) {
+          items: widget.sections.map((e) {
             return DropdownMenuItem(
               value: e.id,
-              child: Text('${e.icono} ${e.nombre}'),
+              child: Text('${e.icon} ${e.name}'),
             );
           }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => apartadoIdSelec = val);
+            if (val != null) setState(() => sectionIdSelec = val);
           },
         );
     }

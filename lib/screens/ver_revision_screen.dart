@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../data/inventario_data.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
+import '../core/api_exception.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/catalog.dart';
+import '../models/inventory_item.dart';
 import '../widgets/icono_widget.dart';
+import '../widgets/offline_banner.dart';
 
 class VerRevisionScreen extends StatefulWidget {
-  final List<ObjetoInventario> objetos;
-
-  const VerRevisionScreen({super.key, required this.objetos});
+  const VerRevisionScreen({super.key});
 
   @override
   State<VerRevisionScreen> createState() => _VerRevisionScreenState();
@@ -16,46 +17,66 @@ class VerRevisionScreen extends StatefulWidget {
 
 class _VerRevisionScreenState extends State<VerRevisionScreen> {
   final TextEditingController _filtroTextoCtrl = TextEditingController();
-  late List<ObjetoInventario> _ordenados;
+  final List<int> _order = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _ordenados = widget.objetos
-        .where((o) => ObjetoInventario.esEstadoEnRevision(o.estado))
-        .toList()
-      ..sort((a, b) => b.valor.compareTo(a.valor));
+  InventoryStore get _store => InventoryScope.of(context);
+
+  List<InventoryItem> _ordenados(InventoryStore store) {
+    final items = store.itemsInReview;
+    final ids = items.map((item) => item.id).toSet();
+    _order.removeWhere((id) => !ids.contains(id));
+    for (final item in items) {
+      if (!_order.contains(item.id)) _order.add(item.id);
+    }
+    final positions = <int, int>{
+      for (var i = 0; i < _order.length; i++) _order[i]: i,
+    };
+    final lista = [...items]
+      ..sort((a, b) {
+        final posA = positions[a.id] ?? 1 << 30;
+        final posB = positions[b.id] ?? 1 << 30;
+        return posA.compareTo(posB);
+      });
+    return lista;
   }
 
-  List<ObjetoInventario> get _objetosEnRevision {
+  List<InventoryItem> _filtrados(InventoryStore store) {
     final q = _filtroTextoCtrl.text.trim().toLowerCase();
-    if (q.isEmpty) return List.of(_ordenados);
-    return _ordenados
-        .where((o) =>
-            o.nombre.toLowerCase().contains(q) ||
-            o.placa.toLowerCase().contains(q) ||
-            o.marca.toLowerCase().contains(q))
+    final lista = _ordenados(store);
+    if (q.isEmpty) return lista;
+    return lista
+        .where(
+          (item) =>
+              item.name.toLowerCase().contains(q) ||
+              item.code.toLowerCase().contains(q) ||
+              item.brand.toLowerCase().contains(q),
+        )
         .toList();
   }
 
   void _reordenar(int oldIndex, int newIndex) {
-    final visibles = List.of(_objetosEnRevision);
-    final idsVisibles = visibles.map((o) => o.id).toSet();
-    final movido = visibles.removeAt(oldIndex);
-    visibles.insert(newIndex, movido);
+    final store = _store;
+    final visibles = _filtrados(store);
+    if (oldIndex < 0 || oldIndex >= visibles.length) return;
+    final idsVisibles = visibles.map((item) => item.id).toList();
+    final movido = idsVisibles.removeAt(oldIndex);
+    idsVisibles.insert(newIndex.clamp(0, idsVisibles.length), movido);
 
     setState(() {
+      final visiblesSet = idsVisibles.toSet();
       var j = 0;
-      for (var i = 0; i < _ordenados.length; i++) {
-        if (idsVisibles.contains(_ordenados[i].id)) {
-          _ordenados[i] = visibles[j++];
+      for (var i = 0; i < _order.length; i++) {
+        if (visiblesSet.contains(_order[i])) {
+          _order[i] = idsVisibles[j++];
         }
       }
     });
   }
 
-  void _editarEstado(ObjetoInventario objeto) {
-    showDialog(
+  Future<void> _editarEstado(InventoryItem item) async {
+    final store = _store;
+    if (!store.canWrite || store.offline) return;
+    final seleccionado = await showDialog<CatalogEntry>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -68,23 +89,20 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
           width: 320,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: ObjetoInventario.estadosDisponibles.map((estado) {
-              final seleccionado = objeto.estado == estado;
+            children: store.catalogs.statuses.map((status) {
+              final activo = item.status.code == status.code;
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
-                  seleccionado
+                  activo
                       ? Icons.radio_button_checked
                       : Icons.radio_button_off,
-                  color: seleccionado
+                  color: activo
                       ? const Color(0xFF6366F1)
                       : const Color(0xFF94A3B8),
                 ),
-                title: Text(estado),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _actualizarEstado(objeto, estado);
-                },
+                title: Text(status.name),
+                onTap: () => Navigator.pop(ctx, status),
               );
             }).toList(),
           ),
@@ -97,68 +115,33 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
         ],
       ),
     );
-  }
+    if (seleccionado == null || seleccionado.code == item.status.code) return;
 
-  void _actualizarEstado(ObjetoInventario objeto, String nuevoEstado) {
-    if (nuevoEstado == objeto.estado) return;
-
-    final actualizado = ObjetoInventario(
-      id: objeto.id,
-      placa: objeto.placa,
-      nombre: objeto.nombre,
-      espacioId: objeto.espacioId,
-      categoria: objeto.categoria,
-      estado: nuevoEstado,
-      valor: objeto.valor,
-      responsable: objeto.responsable,
-      marca: objeto.marca,
-      fechaRegistro: objeto.fechaRegistro,
-      fechaEnRevision: ObjetoInventario.esEstadoEnRevision(nuevoEstado)
-          ? DateTime.now()
-          : objeto.fechaEnRevision,
-      imagePath: objeto.imagePath,
-    );
-
-    setState(() {
-      final indexGlobal =
-          objetosIniciales.indexWhere((item) => item.id == objeto.id);
-      if (indexGlobal != -1) {
-        objetosIniciales[indexGlobal] = actualizado;
-      }
-      final indexLocal = _ordenados.indexWhere((item) => item.id == objeto.id);
-      if (indexLocal != -1) {
-        if (ObjetoInventario.esEstadoEnRevision(nuevoEstado)) {
-          _ordenados[indexLocal] = actualizado;
-        } else {
-          _ordenados.removeAt(indexLocal);
-        }
-      }
-    });
-    notificarCambioInventario();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Estado actualizado correctamente.')),
-    );
+    try {
+      await store.updateItemStatus(
+        item.id,
+        statusCode: seleccionado.code,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Estado actualizado correctamente.')),
+      );
+    } on ApiException catch (error) {
+      store.handleError(error);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(messageForApiError(error))),
+      );
+    }
   }
 
   String _formatearFecha(DateTime fecha) {
-    final dia = fecha.day.toString().padLeft(2, '0');
-    final mes = fecha.month.toString().padLeft(2, '0');
-    final hora = fecha.hour.toString().padLeft(2, '0');
-    final minuto = fecha.minute.toString().padLeft(2, '0');
-    return '$dia/$mes/${fecha.year} $hora:$minuto';
-  }
-
-  Espacio _espacioDe(String id) {
-    for (final e in espaciosIniciales) {
-      if (e.id == id) return e;
-    }
-    return Espacio(
-      id: '',
-      nombre: 'Sin espacio',
-      descripcion: '',
-      emoji: 'X',
-      apartadoId: '',
-    );
+    final local = fecha.toLocal();
+    final dia = local.day.toString().padLeft(2, '0');
+    final mes = local.month.toString().padLeft(2, '0');
+    final hora = local.hour.toString().padLeft(2, '0');
+    final minuto = local.minute.toString().padLeft(2, '0');
+    return '$dia/$mes/${local.year} $hora:$minuto';
   }
 
   @override
@@ -169,7 +152,10 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final objetos = _objetosEnRevision;
+    final store = _store;
+    final objetos = _filtrados(store);
+    final canWrite = store.canWrite && !store.offline;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAFC),
@@ -194,6 +180,11 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            if (store.offline)
+              OfflineBanner(
+                message: 'Sin conexión. Los cambios están deshabilitados.',
+                onRetry: store.retryConnection,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: TextField(
@@ -220,7 +211,8 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      '${objetos.length} objeto${objetos.length == 1 ? '' : 's'} en revisión • Arrastra para ordenar por importancia',
+                      '${objetos.length} objeto${objetos.length == 1 ? '' : 's'} '
+                      'en revisión • Arrastra para ordenar por importancia',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -243,7 +235,12 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                       buildDefaultDragHandles: false,
                       onReorderItem: _reordenar,
                       itemBuilder: (context, index) {
-                        return _construirItem(objetos[index], index);
+                        return _construirItem(
+                          store,
+                          objetos[index],
+                          index,
+                          canWrite,
+                        );
                       },
                     ),
             ),
@@ -253,12 +250,17 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
     );
   }
 
-  Widget _construirItem(ObjetoInventario o, int index) {
-    final espacio = _espacioDe(o.espacioId);
-    final prioridad = _ordenados.indexWhere((x) => x.id == o.id) + 1;
+  Widget _construirItem(
+    InventoryStore store,
+    InventoryItem item,
+    int index,
+    bool canWrite,
+  ) {
+    final space = store.spaceById(item.spaceId);
+    final prioridad = index + 1;
     return GestureDetector(
-      key: ValueKey(o.id),
-      onLongPress: () => _editarEstado(o),
+      key: ValueKey(item.id),
+      onLongPress: canWrite ? () => _editarEstado(item) : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -302,11 +304,8 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                 borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
               child: IconoWidget(
-                imagePath:
-                    (o.imagePath != null && o.imagePath!.trim().isNotEmpty)
-                        ? o.imagePath
-                        : espacio.imagePath,
-                emoji: espacio.emoji,
+                imageUrl: item.imageUrl ?? space?.imageUrl,
+                emoji: space?.emoji ?? item.spaceEmoji,
                 fontSize: 20,
                 size: 42,
                 borderRadius: BorderRadius.circular(12),
@@ -318,7 +317,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    o.nombre,
+                    item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -329,7 +328,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${o.categoria} • ${o.marca}',
+                    '${item.category.name} • ${item.brand}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -339,7 +338,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    espacio.nombre,
+                    space?.name ?? item.spaceName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -349,7 +348,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    _formatearFecha(o.fechaEnRevision),
+                    _formatearFecha(item.inReviewAt ?? item.registeredAt),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -365,7 +364,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${o.valor.toStringAsFixed(0)}',
+                  '\$${item.value.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -381,7 +380,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    o.estado,
+                    item.status.name,
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -391,19 +390,20 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                 ),
               ],
             ),
-            ReorderableDragStartListener(
-              index: index,
-              child: Container(
-                width: 36,
-                height: 44,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.drag_indicator,
-                  color: Color(0xFF94A3B8),
-                  size: 22,
+            if (canWrite)
+              ReorderableDragStartListener(
+                index: index,
+                child: Container(
+                  width: 36,
+                  height: 44,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.drag_indicator,
+                    color: Color(0xFF94A3B8),
+                    size: 22,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

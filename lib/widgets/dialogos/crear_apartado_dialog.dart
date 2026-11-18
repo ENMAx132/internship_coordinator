@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../models/apartado.dart';
+import '../../models/drafts.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearApartadoDialog extends StatefulWidget {
-  final ValueChanged<Apartado> onCrear;
+  final ValueChanged<SectionDraft> onCrear;
+  final List<String> emojis;
 
-  const CrearApartadoDialog({super.key, required this.onCrear});
+  const CrearApartadoDialog({
+    super.key,
+    required this.onCrear,
+    this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
+  });
 
   @override
   State<CrearApartadoDialog> createState() => _CrearApartadoDialogState();
@@ -15,24 +20,14 @@ class CrearApartadoDialog extends StatefulWidget {
 class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   final nombreCtrl = TextEditingController();
   final descCtrl = TextEditingController();
-  String? imagePathSelec;
+  String? localImagePath;
   String emojiSelec = '🏢';
   bool _emojisVisibles = false;
   bool _nombreInvalido = false;
-  final emojis = [
-    '🏢',
-    '💻',
-    '📊',
-    '📦',
-    '🤝',
-    '☕',
-    '🔬',
-    '🛋️',
-    '🏠',
-    '🎮',
-    '📚',
-    '🔥',
-  ];
+
+  List<String> get _emojis => widget.emojis.isEmpty
+      ? const ['🏢', '💻', '📊', '📦']
+      : widget.emojis;
 
   int _paso = 0;
 
@@ -87,6 +82,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
     switch (_paso) {
       case 0:
         emojiSelec = '🏢';
+        localImagePath = null;
         break;
       case 1:
         nombreCtrl.clear();
@@ -99,16 +95,15 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
 
   void _crear() {
     widget.onCrear(
-      Apartado(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        nombre: nombreCtrl.text.trim().isEmpty
+      SectionDraft(
+        name: nombreCtrl.text.trim().isEmpty
             ? 'Sin nombre'
             : nombreCtrl.text.trim(),
-        icono: emojiSelec,
-        imagePath: imagePathSelec,
-        descripcion: descCtrl.text.trim().isEmpty
+        icon: emojiSelec,
+        description: descCtrl.text.trim().isEmpty
             ? 'Nuevo apartado'
             : descCtrl.text.trim(),
+        localImagePath: localImagePath,
       ),
     );
     Navigator.pop(context);
@@ -221,10 +216,10 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
       case 0:
         return SelectorImagenIcono(
           emoji: emojiSelec,
-          imagePath: imagePathSelec,
-          emojis: emojis,
+          localImagePath: localImagePath,
+          emojis: _emojis,
           size: 104,
-          onImagePicked: (p) => setState(() => imagePathSelec = p),
+          onImagePicked: (p) => setState(() => localImagePath = p),
           onEmojiChange: (e) => setState(() => emojiSelec = e),
           onEmojisVisibilityChanged: (visible) =>
               setState(() => _emojisVisibles = visible),

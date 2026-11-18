@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../../data/inventario_data.dart';
-import '../../models/espacio.dart';
-import '../../models/objeto_inventario.dart';
+import '../../models/catalog.dart';
+import '../../models/drafts.dart';
+import '../../models/inventory_item.dart';
+import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class EditarObjetoDialog extends StatefulWidget {
-  final ObjetoInventario objeto;
-  final List<Espacio> espacios;
-  final ValueChanged<ObjetoInventario> onActualizar;
-  final ValueChanged<ObjetoInventario> onEliminar;
+  final InventoryItem item;
+  final List<Space> spaces;
+  final Catalogs catalogs;
+  final ValueChanged<ItemChanges> onActualizar;
+  final VoidCallback onEliminar;
 
   const EditarObjetoDialog({
     super.key,
-    required this.objeto,
-    required this.espacios,
+    required this.item,
+    required this.spaces,
+    required this.catalogs,
     required this.onActualizar,
     required this.onEliminar,
   });
@@ -29,10 +32,10 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
   late final TextEditingController marcaCtrl;
   late final TextEditingController respCtrl;
   late final TextEditingController valorCtrl;
-  late String espacioIdSelec;
-  late String categoriaSelec;
-  late String estadoSelec;
-  late String? imagePathSelec;
+  late int spaceIdSelec;
+  late String categoryCodeSelec;
+  late String statusCodeSelec;
+  String? localImagePath;
   bool _nombreInvalido = false;
   bool _placaInvalida = false;
   bool _valorInvalido = false;
@@ -40,15 +43,24 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
   @override
   void initState() {
     super.initState();
-    nombreCtrl = TextEditingController(text: widget.objeto.nombre);
-    placaCtrl = TextEditingController(text: widget.objeto.placa);
-    marcaCtrl = TextEditingController(text: widget.objeto.marca);
-    respCtrl = TextEditingController(text: widget.objeto.responsable);
-    valorCtrl = TextEditingController(text: widget.objeto.valor.toString());
-    espacioIdSelec = widget.objeto.espacioId;
-    categoriaSelec = widget.objeto.categoria;
-    estadoSelec = widget.objeto.estado;
-    imagePathSelec = widget.objeto.imagePath;
+    nombreCtrl = TextEditingController(text: widget.item.name);
+    placaCtrl = TextEditingController(text: widget.item.code);
+    marcaCtrl = TextEditingController(text: widget.item.brand);
+    respCtrl = TextEditingController(text: widget.item.responsible);
+    valorCtrl = TextEditingController(text: widget.item.value.toString());
+    spaceIdSelec = widget.item.spaceId;
+    categoryCodeSelec = widget.item.category.code;
+    statusCodeSelec = widget.item.status.code;
+  }
+
+  @override
+  void dispose() {
+    nombreCtrl.dispose();
+    placaCtrl.dispose();
+    marcaCtrl.dispose();
+    respCtrl.dispose();
+    valorCtrl.dispose();
+    super.dispose();
   }
 
   void _guardar() {
@@ -58,14 +70,9 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     final valor = valorTexto.isEmpty
         ? 0.0
         : double.tryParse(valorTexto.replaceAll(',', '.'));
-    final placaDuplicada = objetosIniciales.any(
-      (o) =>
-          o.id != widget.objeto.id &&
-          o.placa.trim().toLowerCase() == placa.toLowerCase(),
-    );
 
     final nombreInvalido = nombre.isEmpty;
-    final placaInvalida = placa.isEmpty || placaDuplicada;
+    final placaInvalida = placa.isEmpty;
     final valorInvalido = valor == null || valor < 0;
 
     setState(() {
@@ -76,25 +83,21 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     if (nombreInvalido || placaInvalida || valorInvalido) return;
 
     widget.onActualizar(
-      ObjetoInventario(
-        id: widget.objeto.id,
-        placa: placa,
-        nombre: nombre,
-        espacioId: espacioIdSelec,
-        categoria: categoriaSelec,
-        estado: estadoSelec,
-        valor: valor,
-        responsable: respCtrl.text.trim().isEmpty
-            ? widget.objeto.responsable
+      ItemChanges(
+        spaceId: spaceIdSelec,
+        name: nombre,
+        code: placa,
+        categoryCode: categoryCodeSelec,
+        statusCode: statusCodeSelec,
+        value: valor,
+        responsible: respCtrl.text.trim().isEmpty
+            ? widget.item.responsible
             : respCtrl.text.trim(),
-        marca: marcaCtrl.text.trim().isEmpty
-            ? widget.objeto.marca
+        brand: marcaCtrl.text.trim().isEmpty
+            ? widget.item.brand
             : marcaCtrl.text.trim(),
-        fechaRegistro: widget.objeto.fechaRegistro,
-        fechaEnRevision: ObjetoInventario.esEstadoEnRevision(estadoSelec)
-            ? DateTime.now()
-            : widget.objeto.fechaEnRevision,
-        imagePath: imagePathSelec,
+        imageUrl: widget.item.imageUrl,
+        localImagePath: localImagePath,
       ),
     );
     Navigator.pop(context);
@@ -108,7 +111,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Eliminar objeto'),
         content: Text(
-          '¿Seguro que quieres eliminar "${widget.objeto.nombre}"?',
+          '¿Seguro que quieres eliminar "${widget.item.name}"?',
         ),
         actions: [
           TextButton(
@@ -128,36 +131,41 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     );
     if (confirmado == true && mounted) {
       Navigator.pop(context);
-      widget.onEliminar(widget.objeto);
+      widget.onEliminar();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final categorias = <String>{
-      ...ObjetoInventario.categoriasDisponibles,
-      widget.objeto.categoria,
+    final categorias = <String, String>{
+      for (final category in widget.catalogs.categories)
+        category.code: category.name,
+      widget.item.category.code: widget.item.category.name,
     };
-    final estados = <String>{
-      ...ObjetoInventario.estadosDisponibles,
-      widget.objeto.estado,
+    final estados = <String, String>{
+      for (final status in widget.catalogs.statuses)
+        status.code: status.name,
+      widget.item.status.code: widget.item.status.name,
     };
 
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Editar Objeto',
-          style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text(
+        'Editar Objeto',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SelectorImagenIcono(
-              emoji: widget.espacios.isNotEmpty
-                  ? widget.espacios.first.emoji
+              emoji: widget.spaces.isNotEmpty
+                  ? widget.spaces.first.emoji
                   : '📦',
-              imagePath: imagePathSelec,
-              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              imageUrl: widget.item.imageUrl,
+              localImagePath: localImagePath,
+              onImagePicked: (p) => setState(() => localImagePath = p),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -175,14 +183,13 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
             TextField(
               controller: placaCtrl,
               onChanged: (value) {
-                if (_placaInvalida) {
+                if (_placaInvalida && value.trim().isNotEmpty) {
                   setState(() => _placaInvalida = false);
                 }
               },
               decoration: InputDecoration(
-                labelText: 'C\u00F3digo / Placa',
-                errorText:
-                    _placaInvalida ? 'Placa vacía o ya registrada' : null,
+                labelText: 'Código / Placa',
+                errorText: _placaInvalida ? 'La placa es obligatoria' : null,
               ),
             ),
             TextField(
@@ -211,42 +218,42 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: categoriaSelec,
+              initialValue: categoryCodeSelec,
               decoration: const InputDecoration(labelText: 'Tipo'),
-              items: categorias.map((c) {
+              items: categorias.entries.map((entry) {
                 return DropdownMenuItem(
-                  value: c,
-                  child: Text(c),
+                  value: entry.key,
+                  child: Text(entry.value),
                 );
               }).toList(),
               onChanged: (val) {
-                if (val != null) setState(() => categoriaSelec = val);
+                if (val != null) setState(() => categoryCodeSelec = val);
               },
             ),
             DropdownButtonFormField<String>(
-              initialValue: estadoSelec,
+              initialValue: statusCodeSelec,
               decoration: const InputDecoration(labelText: 'Estado'),
-              items: estados.map((e) {
+              items: estados.entries.map((entry) {
                 return DropdownMenuItem(
-                  value: e,
-                  child: Text(e),
+                  value: entry.key,
+                  child: Text(entry.value),
                 );
               }).toList(),
               onChanged: (val) {
-                if (val != null) setState(() => estadoSelec = val);
+                if (val != null) setState(() => statusCodeSelec = val);
               },
             ),
-            DropdownButtonFormField<String>(
-              initialValue: espacioIdSelec,
+            DropdownButtonFormField<int>(
+              initialValue: spaceIdSelec,
               decoration: const InputDecoration(labelText: 'Espacio / Sala'),
-              items: widget.espacios.map((e) {
+              items: widget.spaces.map((e) {
                 return DropdownMenuItem(
                   value: e.id,
-                  child: Text('${e.emoji} ${e.nombre}'),
+                  child: Text('${e.emoji} ${e.name}'),
                 );
               }).toList(),
               onChanged: (val) {
-                if (val != null) setState(() => espacioIdSelec = val);
+                if (val != null) setState(() => spaceIdSelec = val);
               },
             ),
           ],

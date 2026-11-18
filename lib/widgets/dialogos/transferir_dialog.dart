@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../models/espacio.dart';
-import '../../models/objeto_inventario.dart';
+import '../../models/inventory_item.dart';
+import '../../models/space.dart';
 
 class TransferirDialog extends StatefulWidget {
-  final ObjetoInventario objeto;
-  final List<Espacio> espacios;
-  final ValueChanged<String> onTransferir;
+  final InventoryItem item;
+  final List<Space> spaces;
+  final ValueChanged<int> onTransferir;
 
   const TransferirDialog({
     super.key,
-    required this.objeto,
-    required this.espacios,
+    required this.item,
+    required this.spaces,
     required this.onTransferir,
   });
 
@@ -20,16 +20,21 @@ class TransferirDialog extends StatefulWidget {
 }
 
 class _TransferirDialogState extends State<TransferirDialog> {
-  String? _nuevoEspacioId;
+  int? _nuevoSpaceId;
 
-  List<Espacio> get _destinos =>
-      widget.espacios.where((e) => e.id != widget.objeto.espacioId).toList();
+  List<Space> get _destinos => widget.spaces
+      .where(
+        (space) =>
+            space.sectionId == widget.item.sectionId &&
+            space.id != widget.item.spaceId,
+      )
+      .toList();
 
   @override
   void initState() {
     super.initState();
     final destinos = _destinos;
-    _nuevoEspacioId = destinos.isNotEmpty ? destinos.first.id : null;
+    _nuevoSpaceId = destinos.isNotEmpty ? destinos.first.id : null;
   }
 
   @override
@@ -46,7 +51,7 @@ class _TransferirDialogState extends State<TransferirDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Mover "${widget.objeto.nombre}" a otra sala:'),
+          Text('Mover "${widget.item.name}" a otra sala:'),
           const SizedBox(height: 12),
           if (destinos.isEmpty)
             const Text(
@@ -54,17 +59,17 @@ class _TransferirDialogState extends State<TransferirDialog> {
               style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
             )
           else
-            DropdownButtonFormField<String>(
-              initialValue: _nuevoEspacioId,
+            DropdownButtonFormField<int>(
+              initialValue: _nuevoSpaceId,
               items: destinos
                   .map(
                     (e) => DropdownMenuItem(
                       value: e.id,
-                      child: Text('${e.emoji} ${e.nombre}'),
+                      child: Text('${e.emoji} ${e.name}'),
                     ),
                   )
                   .toList(),
-              onChanged: (val) => setState(() => _nuevoEspacioId = val),
+              onChanged: (val) => setState(() => _nuevoSpaceId = val),
             ),
         ],
       ),
@@ -78,10 +83,10 @@ class _TransferirDialogState extends State<TransferirDialog> {
             backgroundColor: const Color(0xFF6366F1),
             foregroundColor: Colors.white,
           ),
-          onPressed: _nuevoEspacioId == null
+          onPressed: _nuevoSpaceId == null
               ? null
               : () {
-                  final destino = _nuevoEspacioId!;
+                  final destino = _nuevoSpaceId!;
                   Navigator.pop(context);
                   widget.onTransferir(destino);
                 },

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../models/apartado.dart';
+import '../models/section.dart';
 import 'icono_widget.dart';
 
 class ApartadoCard extends StatelessWidget {
-  final Apartado apartado;
-  final int espacios;
-  final int objetos;
+  final Section section;
+  final int spaces;
+  final int objects;
   final VoidCallback onTap;
 
   const ApartadoCard({
     super.key,
-    required this.apartado,
-    required this.espacios,
-    required this.objetos,
+    required this.section,
+    required this.spaces,
+    required this.objects,
     required this.onTap,
   });
 
@@ -50,8 +50,8 @@ class ApartadoCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: IconoWidget(
-                      imagePath: apartado.imagePath,
-                      emoji: apartado.icono,
+                      imageUrl: section.imageUrl,
+                      emoji: section.icon,
                       fontSize: 24,
                     ),
                   ),
@@ -64,7 +64,7 @@ class ApartadoCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                apartado.nombre,
+                section.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -75,7 +75,7 @@ class ApartadoCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                apartado.descripcion,
+                section.description,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -86,9 +86,9 @@ class ApartadoCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _construirEtiqueta('$espacios espacios'),
+                  _construirEtiqueta('$spaces espacios'),
                   const SizedBox(width: 6),
-                  _construirEtiqueta('$objetos objs'),
+                  _construirEtiqueta('$objects objs'),
                 ],
               ),
             ],

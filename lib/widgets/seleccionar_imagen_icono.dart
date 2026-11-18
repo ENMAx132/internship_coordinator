@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Permite elegir el icono de un producto con una imagen de la galeria o la camara.
+/// Permite elegir el icono de un producto con una imagen de la galería o la
+/// cámara. Devuelve la ruta local elegida; el store la sube a la API.
 class SelectorImagenIcono extends StatefulWidget {
-  final String? imagePath;
+  final String? imageUrl;
+  final String? localImagePath;
   final String emoji;
   final List<String>? emojis;
   final ValueChanged<String?> onImagePicked;
@@ -20,7 +22,8 @@ class SelectorImagenIcono extends StatefulWidget {
     required this.onImagePicked,
     this.onEmojiChange,
     this.onEmojisVisibilityChanged,
-    this.imagePath,
+    this.imageUrl,
+    this.localImagePath,
     this.emojis,
     this.size = 104,
   });
@@ -31,7 +34,8 @@ class SelectorImagenIcono extends StatefulWidget {
 
 class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
   late String _emoji;
-  late String? _imagePath;
+  String? _localPath;
+  String? _remoteUrl;
   final ImagePicker _picker = ImagePicker();
   bool _procesando = false;
   bool _mostrarEmojis = false;
@@ -40,14 +44,19 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
   void initState() {
     super.initState();
     _emoji = widget.emoji;
-    _imagePath = widget.imagePath;
+    _localPath = widget.localImagePath;
+    _remoteUrl = widget.imageUrl;
   }
 
   @override
   void didUpdateWidget(covariant SelectorImagenIcono oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.imagePath != oldWidget.imagePath) {
-      setState(() => _imagePath = widget.imagePath);
+    if (widget.imageUrl != oldWidget.imageUrl ||
+        widget.localImagePath != oldWidget.localImagePath) {
+      setState(() {
+        _remoteUrl = widget.imageUrl;
+        _localPath = widget.localImagePath;
+      });
     }
   }
 
@@ -69,14 +78,23 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
           final File origen = File(imagen.path);
           if (origen.existsSync()) {
             final File copia = await origen.copy(destino);
-            setState(() => _imagePath = copia.path);
+            setState(() {
+              _localPath = copia.path;
+              _remoteUrl = null;
+            });
             widget.onImagePicked(copia.path);
           } else {
-            setState(() => _imagePath = imagen.path);
+            setState(() {
+              _localPath = imagen.path;
+              _remoteUrl = null;
+            });
             widget.onImagePicked(imagen.path);
           }
         } catch (_) {
-          setState(() => _imagePath = imagen.path);
+          setState(() {
+            _localPath = imagen.path;
+            _remoteUrl = null;
+          });
           widget.onImagePicked(imagen.path);
         }
       }
@@ -89,7 +107,8 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
 
   Future<String> _rutaDestino() async {
     final Directory directorio = await getApplicationDocumentsDirectory();
-    return '${directorio.path}/icono_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    return '${directorio.path}${Platform.pathSeparator}'
+        'icono_${DateTime.now().millisecondsSinceEpoch}.jpg';
   }
 
   @override
@@ -105,14 +124,7 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
             shape: BoxShape.circle,
           ),
           child: ClipOval(
-            child: _imagePath != null && _imagePath!.trim().isNotEmpty
-                ? Image.file(
-                    File(_imagePath!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _construirFallback(),
-                  )
-                : _construirFallback(),
+            child: _construirImagen(),
           ),
         ),
         const SizedBox(height: 10),
@@ -157,6 +169,28 @@ class _SelectorImagenIconoState extends State<SelectorImagenIcono> {
         ],
       ],
     );
+  }
+
+  Widget _construirImagen() {
+    if (_localPath != null && _localPath!.trim().isNotEmpty) {
+      return Image.file(
+        File(_localPath!),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _construirFallback(),
+      );
+    }
+    if (_remoteUrl != null && _remoteUrl!.trim().isNotEmpty) {
+      return Image.network(
+        _remoteUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _construirFallback(),
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return _construirFallback();
+        },
+      );
+    }
+    return _construirFallback();
   }
 
   Widget _construirFallback() {

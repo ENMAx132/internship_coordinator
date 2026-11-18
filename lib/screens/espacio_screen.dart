@@ -1,74 +1,180 @@
 import 'package:flutter/material.dart';
 
-import '../data/inventario_data.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
-import '../widgets/icono_widget.dart';
+import '../core/api_exception.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/inventory_item.dart';
+import '../models/space.dart';
+import '../widgets/dialogos/crear_objeto_dialog.dart';
 import '../widgets/dialogos/editar_objeto_dialog.dart';
 import '../widgets/dialogos/transferir_dialog.dart';
+import '../widgets/icono_widget.dart';
 import '../widgets/item_tile.dart';
-import '../widgets/dialogos/crear_objeto_dialog.dart';
+import '../widgets/offline_banner.dart';
 
 class EspacioScreen extends StatefulWidget {
-  final Espacio espacio;
+  final Space space;
 
-  const EspacioScreen({super.key, required this.espacio});
+  const EspacioScreen({super.key, required this.space});
 
   @override
   State<EspacioScreen> createState() => _EspacioScreenState();
 }
 
 class _EspacioScreenState extends State<EspacioScreen> {
-  List<ObjetoInventario> get _objetos {
-    return objetosIniciales
-        .where((o) => o.espacioId == widget.espacio.id)
-        .toList();
+  InventoryStore get _store => InventoryScope.of(context);
+
+  Space get _space => _store.spaceById(widget.space.id) ?? widget.space;
+
+  Future<void> _run(
+    Future<void> Function() action, {
+    String? success,
+  }) async {
+    final store = _store;
+    try {
+      await action();
+      if (success != null) _mostrarAviso(success);
+    } on ApiException catch (error) {
+      store.handleError(error);
+      _mostrarAviso(messageForApiError(error));
+    } catch (_) {
+      _mostrarAviso('Ocurrió un error inesperado.');
+    }
+  }
+
+  void _mostrarAviso(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
+  }
+
+  Future<void> _dialogoCrearObjeto() async {
+    final store = _store;
+    var placa = '';
+    try {
+      placa = await store.nextCode();
+    } catch (_) {
+      placa = '';
+    }
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => CrearObjetoDialog(
+        spaces: [_space],
+        catalogs: store.catalogs,
+        placaInicial: placa,
+        onGuardar: (draft) {
+          _run(
+            () => store.createItem(draft),
+            success: 'Objeto agregado correctamente.',
+          );
+        },
+      ),
+    );
+  }
+
+  void _dialogoTransferir(InventoryItem item) {
+    final store = _store;
+    final spaces = store.spacesForSection(_space.sectionId);
+    showDialog(
+      context: context,
+      builder: (ctx) => TransferirDialog(
+        item: item,
+        spaces: spaces,
+        onTransferir: (nuevoSpaceId) {
+          _run(
+            () => store.transferItem(item.id, nuevoSpaceId),
+            success: 'Activo transferido exitosamente.',
+          );
+        },
+      ),
+    );
+  }
+
+  void _dialogoEditarObjeto(InventoryItem item) {
+    final store = _store;
+    showDialog(
+      context: context,
+      builder: (ctx) => EditarObjetoDialog(
+        item: item,
+        spaces: store.spacesForSection(_space.sectionId),
+        catalogs: store.catalogs,
+        onActualizar: (changes) {
+          _run(
+            () => store.updateItem(item.id, changes),
+            success: 'Objeto actualizado correctamente.',
+          );
+        },
+        onEliminar: () {
+          _run(
+            () => store.deleteItem(item.id),
+            success: 'Objeto eliminado correctamente.',
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = _store;
+    final canWrite = store.canWrite && !store.offline;
+    final space = _space;
+    final items = store.itemsForSpace(space.id);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: Row(
-            children: [
-              IconoWidget(
-                imagePath: widget.espacio.imagePath,
-                emoji: widget.espacio.emoji,
-                fontSize: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.espacio.nombre,
+        title: Row(
+          children: [
+            IconoWidget(
+              imageUrl: space.imageUrl,
+              emoji: space.emoji,
+              fontSize: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                space.name,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                   color: Color(0xFF0F172A),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
-            tooltip: 'Agregar objeto',
-            onPressed: _dialogoCrearObjeto,
-          ),
+          if (canWrite)
+            IconButton(
+              icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
+              tooltip: 'Agregar objeto',
+              onPressed: _dialogoCrearObjeto,
+            ),
         ],
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (store.offline)
+              OfflineBanner(
+                message: 'Sin conexión. Los cambios están deshabilitados.',
+                onRetry: store.retryConnection,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Container(
@@ -93,8 +199,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: IconoWidget(
-                        imagePath: widget.espacio.imagePath,
-                        emoji: widget.espacio.emoji,
+                        imageUrl: space.imageUrl,
+                        emoji: space.emoji,
                         fontSize: 30,
                       ),
                     ),
@@ -104,7 +210,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.espacio.nombre,
+                            space.name,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -113,9 +219,11 @@ class _EspacioScreenState extends State<EspacioScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            widget.espacio.descripcion,
+                            space.description,
                             style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF64748B)),
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                         ],
                       ),
@@ -138,7 +246,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
                     ),
                   ),
                   Text(
-                    '${_objetos.length} en este espacio',
+                    '${items.length} en este espacio',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF94A3B8),
@@ -149,18 +257,19 @@ class _EspacioScreenState extends State<EspacioScreen> {
               ),
             ),
             Expanded(
-              child: _objetos.isEmpty
-                  ? _construirListaVacia()
+              child: items.isEmpty
+                  ? _construirListaVacia(canWrite)
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      itemCount: _objetos.length,
+                      itemCount: items.length,
                       itemBuilder: (context, index) {
-                        final obj = _objetos[index];
+                        final item = items[index];
                         return ItemTile(
-                          objeto: obj,
-                          espacioAsoc: widget.espacio,
-                          onTransferir: () => _dialogoTransferir(obj),
-                          onLongPress: () => _dialogoEditarObjeto(obj),
+                          item: item,
+                          space: space,
+                          canWrite: canWrite,
+                          onTransferir: () => _dialogoTransferir(item),
+                          onLongPress: () => _dialogoEditarObjeto(item),
                         );
                       },
                     ),
@@ -171,16 +280,13 @@ class _EspacioScreenState extends State<EspacioScreen> {
     );
   }
 
-  Widget _construirListaVacia() {
+  Widget _construirListaVacia(bool canWrite) {
     return Container(
       padding: const EdgeInsets.all(24),
       alignment: Alignment.center,
       child: Column(
         children: [
-          const Text(
-            '📦',
-            style: TextStyle(fontSize: 40),
-          ),
+          const Text('📦', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 8),
           const Text(
             'Aún no hay objetos en este espacio',
@@ -189,116 +295,18 @@ class _EspacioScreenState extends State<EspacioScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: _dialogoCrearObjeto,
-            child: const Text('Agregar primer objeto'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _dialogoCrearObjeto() {
-    showDialog(
-      context: context,
-      builder: (ctx) => CrearObjetoDialog(
-        espacios: [widget.espacio],
-        placaInicial: generarPlacaUnica(),
-        onGuardar: (obj) {
-          setState(() {
-            objetosIniciales.add(obj);
-            notificarCambioInventario();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Objeto agregado correctamente.')),
-          );
-        },
-      ),
-    );
-  }
-
-  void _dialogoTransferir(ObjetoInventario obj) {
-    showDialog(
-      context: context,
-      builder: (ctx) => TransferirDialog(
-        objeto: obj,
-        espacios: espaciosIniciales
-            .where((e) => e.apartadoId == widget.espacio.apartadoId)
-            .toList(),
-        onTransferir: (nuevoEspacioId) {
-          setState(() {
-            obj.espacioId = nuevoEspacioId;
-            notificarCambioInventario();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Activo transferido exitosamente.')),
-          );
-        },
-      ),
-    );
-  }
-
-  void _dialogoEditarObjeto(ObjetoInventario obj) {
-    showDialog(
-      context: context,
-      builder: (ctx) => EditarObjetoDialog(
-        objeto: obj,
-        espacios: [widget.espacio],
-        onActualizar: (o) {
-          String? imagenAnterior;
-          setState(() {
-            final index =
-                objetosIniciales.indexWhere((item) => item.id == o.id);
-            if (index != -1) {
-              imagenAnterior = objetosIniciales[index].imagePath;
-              objetosIniciales[index] = o;
-              notificarCambioInventario();
-            }
-          });
-          eliminarImagenHuerfana(imagenAnterior);
-        },
-        onEliminar: (o) {
-          final index = objetosIniciales.indexWhere((item) => item.id == o.id);
-          final imagen = o.imagePath;
-          final registrosActivos = historialRevisiones
-              .where((r) => r.objetoId == o.id && r.fechaSalida == null)
-              .toList();
-          setState(() {
-            registrarEliminacionEnHistorial({o.id});
-            objetosIniciales.removeWhere((item) => item.id == o.id);
-            notificarCambioInventario();
-          });
-          Future<void>.delayed(const Duration(seconds: 5), () {
-            eliminarImagenHuerfana(imagen);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Objeto eliminado correctamente.'),
-              action: SnackBarAction(
-                label: 'Deshacer',
-                onPressed: () {
-                  setState(() {
-                    if (index >= 0 && index <= objetosIniciales.length) {
-                      objetosIniciales.insert(index, o);
-                    } else {
-                      objetosIniciales.add(o);
-                    }
-                    for (final registro in registrosActivos) {
-                      registro.fechaSalida = null;
-                      registro.motivoSalida = null;
-                    }
-                    notificarCambioInventario();
-                  });
-                },
+          if (canWrite) ...[
+            const SizedBox(height: 12),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
               ),
+              onPressed: _dialogoCrearObjeto,
+              child: const Text('Agregar primer objeto'),
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }

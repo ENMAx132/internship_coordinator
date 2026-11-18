@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../data/inventario_data.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
-import '../models/registro_revision.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/inventory_item.dart';
+import '../models/review.dart';
 import '../widgets/icono_widget.dart';
+import '../widgets/offline_banner.dart';
 
 class HistorialScreen extends StatefulWidget {
-  const HistorialScreen({super.key});
+  const HistorialScreen({super.key, required this.onLogout});
+
+  final VoidCallback onLogout;
 
   @override
   State<HistorialScreen> createState() => _HistorialScreenState();
@@ -16,93 +19,126 @@ class HistorialScreen extends StatefulWidget {
 class _HistorialScreenState extends State<HistorialScreen> {
   int _vista = 0;
 
-  Espacio _espacioDe(String id) {
-    return espaciosIniciales.firstWhere(
-      (e) => e.id == id,
-      orElse: () => Espacio(
-        id: '',
-        nombre: 'Sin espacio',
-        descripcion: '',
-        emoji: '📍',
-        apartadoId: '',
-      ),
-    );
-  }
+  InventoryStore get _store => InventoryScope.of(context);
 
-  ObjetoInventario? _objetoDe(String id) {
-    for (final objeto in objetosIniciales) {
-      if (objeto.id == id) return objeto;
+  InventoryItem? _itemDe(InventoryStore store, int? id) {
+    if (id == null) return null;
+    for (final item in store.items) {
+      if (item.id == id) return item;
     }
     return null;
   }
 
   String _formatearFecha(DateTime fecha) {
-    final dia = fecha.day.toString().padLeft(2, '0');
-    final mes = fecha.month.toString().padLeft(2, '0');
-    final hora = fecha.hour.toString().padLeft(2, '0');
-    final minuto = fecha.minute.toString().padLeft(2, '0');
-    return '$dia/$mes/${fecha.year} · $hora:$minuto';
+    final local = fecha.toLocal();
+    final dia = local.day.toString().padLeft(2, '0');
+    final mes = local.month.toString().padLeft(2, '0');
+    final hora = local.hour.toString().padLeft(2, '0');
+    final minuto = local.minute.toString().padLeft(2, '0');
+    return '$dia/$mes/${local.year} · $hora:$minuto';
+  }
+
+  Future<void> _refrescar(InventoryStore store) async {
+    try {
+      await store.refreshReviews();
+      await store.refreshItems();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar el historial.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: inventarioVersion,
-      builder: (context, _, __) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final store = _store;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (store.offline)
+            OfflineBanner(
+              message: 'Sin conexión. Mostrando el historial guardado.',
+              onRetry: store.retryConnection,
+            ),
+          Row(
             children: [
-              const Text(
-                'Historial',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1E293B),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _vista == 0
-                    ? 'Objetos que han pasado por revisión'
-                    : 'Objetos agregados y su fecha de registro',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _construirChip(
-                      'Revisiones',
-                      _vista == 0,
-                      () => setState(() => _vista = 0),
+                    const Text(
+                      'Historial',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    _construirChip(
-                      'Registros',
-                      _vista == 1,
-                      () => setState(() => _vista = 1),
+                    const SizedBox(height: 2),
+                    Text(
+                      _vista == 0
+                          ? 'Objetos que han pasado por revisión'
+                          : 'Objetos agregados y su fecha de registro',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: _vista == 0
-                    ? _construirRevisiones()
-                    : _construirRegistros(),
+              IconButton(
+                onPressed: () => _refrescar(store),
+                tooltip: 'Actualizar',
+                icon: const Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              IconButton(
+                onPressed: widget.onLogout,
+                tooltip: 'Cerrar sesión',
+                icon: const Icon(
+                  Icons.logout,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _construirChip(
+                  'Revisiones',
+                  _vista == 0,
+                  () => setState(() => _vista = 0),
+                ),
+                const SizedBox(width: 8),
+                _construirChip(
+                  'Registros',
+                  _vista == 1,
+                  () => setState(() => _vista = 1),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: _vista == 0
+                ? _construirRevisiones(store)
+                : _construirRegistros(store),
+          ),
+        ],
+      ),
     );
   }
 
@@ -136,9 +172,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
     );
   }
 
-  Widget _construirRevisiones() {
-    final revisiones = [...historialRevisiones]
-      ..sort((a, b) => b.fechaEntrada.compareTo(a.fechaEntrada));
+  Widget _construirRevisiones(InventoryStore store) {
+    final revisiones = [...store.reviews]
+      ..sort((a, b) => b.enteredAt.compareTo(a.enteredAt));
 
     if (revisiones.isEmpty) {
       return _construirVacio(
@@ -152,17 +188,21 @@ class _HistorialScreenState extends State<HistorialScreen> {
       padding: const EdgeInsets.only(bottom: 24),
       itemCount: revisiones.length,
       itemBuilder: (context, index) {
-        return _construirRegistroRevision(revisiones[index]);
+        return _construirRegistroRevision(store, revisiones[index]);
       },
     );
   }
 
-  Widget _construirRegistroRevision(RegistroRevision registro) {
-    final objeto = _objetoDe(registro.objetoId);
-    final espacio = _espacioDe(objeto?.espacioId ?? registro.espacioId);
-    final nombre = objeto?.nombre ?? registro.nombre;
-    final placa = objeto?.placa ?? registro.placa;
-    final activo = registro.enRevision;
+  Widget _construirRegistroRevision(InventoryStore store, Review review) {
+    final item = _itemDe(store, review.itemId);
+    final space = item != null ? store.spaceById(item.spaceId) : null;
+    final nombre = item?.name ?? review.itemName;
+    final placa = item?.code ?? review.itemCode;
+    final spaceName =
+        space?.name ?? review.spaceName ?? item?.spaceName ?? 'Sin espacio';
+    final emoji = space?.emoji ?? item?.spaceEmoji ?? '📍';
+    final imageUrl = item?.imageUrl ?? review.imageUrl;
+    final activo = review.isActive;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -188,8 +228,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconoWidget(
-              imagePath: objeto?.imagePath ?? registro.imagePath,
-              emoji: espacio.emoji,
+              imageUrl: imageUrl,
+              emoji: emoji,
               fontSize: 20,
               size: 42,
               borderRadius: BorderRadius.circular(12),
@@ -241,7 +281,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '$placa · ${espacio.nombre}',
+                  '$placa · $spaceName',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -260,7 +300,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Ingresó ${_formatearFecha(registro.fechaEntrada)}',
+                        'Ingresó ${_formatearFecha(review.enteredAt)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -272,7 +312,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                     ),
                   ],
                 ),
-                if (registro.fechaSalida != null) ...[
+                if (review.exitedAt != null) ...[
                   const SizedBox(height: 2),
                   Row(
                     children: [
@@ -284,7 +324,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'Salió ${_formatearFecha(registro.fechaSalida!)}',
+                          'Salió ${_formatearFecha(review.exitedAt!)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -296,7 +336,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                     ],
                   ),
                 ],
-                if (registro.motivoSalida != null) ...[
+                if (review.exitReason != null) ...[
                   const SizedBox(height: 2),
                   Row(
                     children: [
@@ -308,7 +348,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'Motivo: ${registro.motivoSalida}',
+                          'Motivo: ${review.exitReason}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -328,9 +368,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
     );
   }
 
-  Widget _construirRegistros() {
-    final objetos = [...objetosIniciales]
-      ..sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
+  Widget _construirRegistros(InventoryStore store) {
+    final objetos = [...store.items]
+      ..sort((a, b) => b.registeredAt.compareTo(a.registeredAt));
 
     if (objetos.isEmpty) {
       return _construirVacio('🕘', 'Aún no hay objetos registrados');
@@ -341,14 +381,13 @@ class _HistorialScreenState extends State<HistorialScreen> {
       padding: const EdgeInsets.only(bottom: 24),
       itemCount: objetos.length,
       itemBuilder: (context, index) {
-        final objeto = objetos[index];
-        return _construirRegistroObjeto(objeto);
+        return _construirRegistroObjeto(store, objetos[index]);
       },
     );
   }
 
-  Widget _construirRegistroObjeto(ObjetoInventario objeto) {
-    final espacio = _espacioDe(objeto.espacioId);
+  Widget _construirRegistroObjeto(InventoryStore store, InventoryItem item) {
+    final space = store.spaceById(item.spaceId);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -373,8 +412,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconoWidget(
-              imagePath: objeto.imagePath ?? espacio.imagePath,
-              emoji: espacio.emoji,
+              imageUrl: item.imageUrl ?? space?.imageUrl,
+              emoji: space?.emoji ?? item.spaceEmoji,
               fontSize: 20,
               size: 42,
               borderRadius: BorderRadius.circular(12),
@@ -386,7 +425,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  objeto.nombre,
+                  item.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -397,7 +436,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${objeto.placa} · ${espacio.nombre}',
+                  '${item.code} · ${space?.name ?? item.spaceName}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -407,7 +446,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatearFecha(objeto.fechaRegistro),
+                  _formatearFecha(item.registeredAt),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

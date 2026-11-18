@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../data/inventario_data.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/inventory_item.dart';
 import '../widgets/icono_widget.dart';
+import '../widgets/offline_banner.dart';
 
 class VerTodosObjetosScreen extends StatefulWidget {
-  final String? apartadoId;
+  final int? sectionId;
 
-  const VerTodosObjetosScreen({super.key, this.apartadoId});
+  const VerTodosObjetosScreen({super.key, this.sectionId});
 
   @override
   State<VerTodosObjetosScreen> createState() => _VerTodosObjetosScreenState();
@@ -22,94 +23,109 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
   final TextEditingController _precioMaxCtrl = TextEditingController();
   final TextEditingController _filtroTextoCtrl = TextEditingController();
 
-  List<Espacio> get _misEspacios {
-    final apartadoId = widget.apartadoId;
-    if (apartadoId == null) return espaciosIniciales;
-    return espaciosIniciales.where((e) => e.apartadoId == apartadoId).toList();
-  }
+  InventoryStore get _store => InventoryScope.of(context);
 
-  List<ObjetoInventario> get _todosLosObjetos {
-    final ids = _misEspacios.map((e) => e.id).toSet();
-    final lista = objetosIniciales
-        .where((o) => ids.contains(o.espacioId))
-        .toList()
-      ..sort((a, b) => b.valor.compareTo(a.valor));
+  List<InventoryItem> _todos(InventoryStore store) {
+    final sectionId = widget.sectionId;
+    final lista = sectionId == null
+        ? [...store.items]
+        : store.itemsForSection(sectionId);
+    lista.sort((a, b) => b.value.compareTo(a.value));
     return lista;
   }
 
-  List<String> get _marcasDisponibles {
+  List<String> _marcasDisponibles(List<InventoryItem> items) {
     final marcas = <String>{};
-    for (final o in _todosLosObjetos) {
-      final m = o.marca.trim();
-      if (m.isNotEmpty) marcas.add(m);
+    for (final item in items) {
+      final marca = item.brand.trim();
+      if (marca.isNotEmpty) marcas.add(marca);
     }
     return marcas.toList()..sort();
   }
 
-  List<ObjetoInventario> get _objetosFiltrados {
-    var lista = _todosLosObjetos;
+  List<InventoryItem> _filtrados(InventoryStore store) {
+    var lista = _todos(store);
     final q = _filtroTextoCtrl.text.trim().toLowerCase();
     if (q.isNotEmpty) {
       lista = lista
-          .where((o) =>
-              o.nombre.toLowerCase().contains(q) ||
-              o.placa.toLowerCase().contains(q) ||
-              o.marca.toLowerCase().contains(q))
+          .where(
+            (item) =>
+                item.name.toLowerCase().contains(q) ||
+                item.code.toLowerCase().contains(q) ||
+                item.brand.toLowerCase().contains(q),
+          )
           .toList();
     }
     if (_tipoSeleccionado != 'Tipo') {
-      lista = lista.where((o) => o.categoria == _tipoSeleccionado).toList();
+      lista = lista
+          .where((item) => item.category.name == _tipoSeleccionado)
+          .toList();
     }
     if (_marcaSeleccionada != 'Marca') {
-      lista = lista.where((o) => o.marca == _marcaSeleccionada).toList();
+      lista = lista
+          .where((item) => item.brand == _marcaSeleccionada)
+          .toList();
     }
     if (_estadoSeleccionado != 'Estado') {
-      lista = lista.where((o) => o.estado == _estadoSeleccionado).toList();
+      lista = lista
+          .where((item) => item.status.name == _estadoSeleccionado)
+          .toList();
     }
     final min = double.tryParse(_precioMinCtrl.text.replaceAll(',', '.'));
     final max = double.tryParse(_precioMaxCtrl.text.replaceAll(',', '.'));
     if (min != null) {
-      lista = lista.where((o) => o.valor >= min).toList();
+      lista = lista.where((item) => item.value >= min).toList();
     }
     if (max != null) {
-      lista = lista.where((o) => o.valor <= max).toList();
+      lista = lista.where((item) => item.value <= max).toList();
     }
     return lista;
   }
 
-  Espacio _espacioDe(String id) {
-    for (final e in _misEspacios) {
-      if (e.id == id) return e;
-    }
-    return Espacio(
-      id: '',
-      nombre: 'Sin espacio',
-      descripcion: '',
-      emoji: 'X',
-      apartadoId: '',
-    );
+  @override
+  void dispose() {
+    _precioMinCtrl.dispose();
+    _precioMaxCtrl.dispose();
+    _filtroTextoCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = _store;
+    final todos = _todos(store);
+    final objetos = _filtrados(store);
+    final marcas = _marcasDisponibles(todos);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Todos los Objetos',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Color(0xFF0F172A))),
+        title: const Text(
+          'Todos los Objetos',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Color(0xFF0F172A),
+          ),
+        ),
       ),
       body: SafeArea(
         child: Column(
           children: [
+            if (store.offline)
+              OfflineBanner(
+                message: 'Sin conexión. Mostrando objetos guardados.',
+                onRetry: store.retryConnection,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: TextField(
@@ -134,14 +150,14 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                       valor: _tipoSeleccionado,
                       opciones: <String>[
                         'Tipo',
-                        ...ObjetoInventario.categoriasDisponibles
+                        ...store.catalogs.categories.map((e) => e.name),
                       ],
                       onCambio: (v) => setState(() => _tipoSeleccionado = v!),
                     ),
                     const SizedBox(width: 8),
                     _construirFiltro(
                       valor: _marcaSeleccionada,
-                      opciones: <String>['Marca', ..._marcasDisponibles],
+                      opciones: <String>['Marca', ...marcas],
                       onCambio: (v) => setState(() => _marcaSeleccionada = v!),
                     ),
                     const SizedBox(width: 8),
@@ -149,7 +165,7 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
                       valor: _estadoSeleccionado,
                       opciones: <String>[
                         'Estado',
-                        ...ObjetoInventario.estadosDisponibles
+                        ...store.catalogs.statuses.map((e) => e.name),
                       ],
                       onCambio: (v) => setState(() => _estadoSeleccionado = v!),
                     ),
@@ -192,16 +208,15 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               ),
             ),
             Expanded(
-              child: _objetosFiltrados.isEmpty
+              child: objetos.isEmpty
                   ? const Center(
                       child: Text('No hay objetos con esos filtros'),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                      itemCount: _objetosFiltrados.length,
+                      itemCount: objetos.length,
                       itemBuilder: (context, index) {
-                        final o = _objetosFiltrados[index];
-                        return _construirItem(o);
+                        return _construirItem(store, objetos[index]);
                       },
                     ),
             ),
@@ -237,8 +252,8 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
     );
   }
 
-  Widget _construirItem(ObjetoInventario o) {
-    final espacio = _espacioDe(o.espacioId);
+  Widget _construirItem(InventoryStore store, InventoryItem item) {
+    final space = store.spaceById(item.spaceId);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -247,9 +262,10 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 2)),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
@@ -262,10 +278,8 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
             child: IconoWidget(
-              imagePath: (o.imagePath != null && o.imagePath!.trim().isNotEmpty)
-                  ? o.imagePath
-                  : espacio.imagePath,
-              emoji: espacio.emoji,
+              imageUrl: item.imageUrl ?? space?.imageUrl,
+              emoji: space?.emoji ?? item.spaceEmoji,
               fontSize: 20,
               size: 42,
               borderRadius: BorderRadius.circular(12),
@@ -277,17 +291,20 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  o.nombre,
+                  item.name,
                   style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B)),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${o.placa} • ${o.categoria} • ${o.marca}',
-                  style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  '${item.code} • ${item.category.name} • ${item.brand}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
@@ -296,19 +313,21 @@ class _VerTodosObjetosScreenState extends State<VerTodosObjetosScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${o.valor.toStringAsFixed(0)}',
+                '\$${item.value.toStringAsFixed(0)}',
                 style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6366F1)),
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6366F1),
+                ),
               ),
               const SizedBox(height: 3),
               Text(
-                o.estado,
+                item.status.name,
                 style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF94A3B8)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
             ],
           ),

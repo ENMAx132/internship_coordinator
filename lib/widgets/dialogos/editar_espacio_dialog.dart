@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 
-import '../../models/apartado.dart';
-import '../../models/espacio.dart';
+import '../../models/drafts.dart';
+import '../../models/section.dart';
+import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class EditarEspacioDialog extends StatefulWidget {
-  final Espacio espacio;
-  final ValueChanged<Espacio> onActualizar;
-  final ValueChanged<Espacio> onEliminar;
-  final List<Apartado> apartados;
+  final Space space;
+  final ValueChanged<SpaceDraft> onActualizar;
+  final VoidCallback onEliminar;
+  final List<Section> sections;
+  final List<String> emojis;
 
   const EditarEspacioDialog({
     super.key,
-    required this.espacio,
+    required this.space,
     required this.onActualizar,
     required this.onEliminar,
-    required this.apartados,
+    required this.sections,
+    this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
   });
 
   @override
@@ -26,19 +29,27 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
   late final TextEditingController nombreCtrl;
   late final TextEditingController descCtrl;
   late String emojiSelec;
-  late String? imagePathSelec;
-  late final List<String> emojis;
-  late String apartadoIdSelec;
+  String? localImagePath;
+  late int sectionIdSelec;
+
+  List<String> get _emojis => widget.emojis.isEmpty
+      ? const ['🏢', '💻', '📊', '📦']
+      : widget.emojis;
 
   @override
   void initState() {
     super.initState();
-    nombreCtrl = TextEditingController(text: widget.espacio.nombre);
-    descCtrl = TextEditingController(text: widget.espacio.descripcion);
-    emojiSelec = widget.espacio.emoji;
-    imagePathSelec = widget.espacio.imagePath;
-    apartadoIdSelec = widget.espacio.apartadoId;
-    emojis = ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'];
+    nombreCtrl = TextEditingController(text: widget.space.name);
+    descCtrl = TextEditingController(text: widget.space.description);
+    emojiSelec = widget.space.emoji;
+    sectionIdSelec = widget.space.sectionId;
+  }
+
+  @override
+  void dispose() {
+    nombreCtrl.dispose();
+    descCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _confirmarEliminar() async {
@@ -49,7 +60,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Eliminar espacio'),
         content: Text(
-          '¿Seguro que quieres eliminar "${widget.espacio.nombre}"? '
+          '¿Seguro que quieres eliminar "${widget.space.name}"? '
           'También se eliminarán sus objetos.',
         ),
         actions: [
@@ -70,7 +81,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     );
     if (confirmado == true && mounted) {
       Navigator.pop(context);
-      widget.onEliminar(widget.espacio);
+      widget.onEliminar();
     }
   }
 
@@ -79,18 +90,21 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Editar Espacio',
-          style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text(
+        'Editar Espacio',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SelectorImagenIcono(
               emoji: emojiSelec,
-              imagePath: imagePathSelec,
-              emojis: emojis,
+              imageUrl: widget.space.imageUrl,
+              localImagePath: localImagePath,
+              emojis: _emojis,
               size: 104,
-              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              onImagePicked: (p) => setState(() => localImagePath = p),
               onEmojiChange: (e) => setState(() => emojiSelec = e),
             ),
             const SizedBox(height: 10),
@@ -104,17 +118,17 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
               decoration: const InputDecoration(labelText: 'Descripción breve'),
             ),
             const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: apartadoIdSelec,
+            DropdownButtonFormField<int>(
+              initialValue: sectionIdSelec,
               decoration: const InputDecoration(labelText: 'Apartado'),
-              items: widget.apartados.map((e) {
+              items: widget.sections.map((e) {
                 return DropdownMenuItem(
                   value: e.id,
-                  child: Text('${e.icono} ${e.nombre}'),
+                  child: Text('${e.icon} ${e.name}'),
                 );
               }).toList(),
               onChanged: (val) {
-                if (val != null) setState(() => apartadoIdSelec = val);
+                if (val != null) setState(() => sectionIdSelec = val);
               },
             ),
           ],
@@ -137,15 +151,15 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
           onPressed: () {
             if (nombreCtrl.text.trim().isNotEmpty) {
               widget.onActualizar(
-                Espacio(
-                  id: widget.espacio.id,
-                  nombre: nombreCtrl.text.trim(),
-                  descripcion: descCtrl.text.trim().isEmpty
+                SpaceDraft(
+                  sectionId: sectionIdSelec,
+                  name: nombreCtrl.text.trim(),
+                  description: descCtrl.text.trim().isEmpty
                       ? 'Área de trabajo'
                       : descCtrl.text.trim(),
                   emoji: emojiSelec,
-                  imagePath: imagePathSelec,
-                  apartadoId: apartadoIdSelec,
+                  imageUrl: widget.space.imageUrl,
+                  localImagePath: localImagePath,
                 ),
               );
               Navigator.pop(context);

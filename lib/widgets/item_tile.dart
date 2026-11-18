@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
+
+import '../models/inventory_item.dart';
+import '../models/space.dart';
 import 'icono_widget.dart';
 
 class ItemTile extends StatelessWidget {
-  final ObjetoInventario objeto;
-  final Espacio espacioAsoc;
+  final InventoryItem item;
+  final Space space;
   final VoidCallback onTransferir;
   final VoidCallback onLongPress;
+  final bool canWrite;
 
   const ItemTile({
     super.key,
-    required this.objeto,
-    required this.espacioAsoc,
+    required this.item,
+    required this.space,
     required this.onTransferir,
     required this.onLongPress,
+    this.canWrite = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onLongPress,
+      onLongPress: canWrite ? onLongPress : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -45,11 +48,8 @@ class ItemTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconoWidget(
-                imagePath: (objeto.imagePath != null &&
-                        objeto.imagePath!.trim().isNotEmpty)
-                    ? objeto.imagePath
-                    : espacioAsoc.imagePath,
-                emoji: espacioAsoc.emoji,
+                imageUrl: item.imageUrl ?? space.imageUrl,
+                emoji: space.emoji,
                 fontSize: 20,
                 size: 42,
                 borderRadius: BorderRadius.circular(12),
@@ -61,7 +61,7 @@ class ItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    objeto.nombre,
+                    item.name,
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
@@ -70,7 +70,7 @@ class ItemTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${objeto.placa} • ${espacioAsoc.nombre} • ${objeto.responsable}',
+                    '${item.code} • ${space.name} • ${item.responsible}',
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF64748B),
@@ -79,15 +79,16 @@ class ItemTile extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.swap_horiz,
-                color: Color(0xFF6366F1),
-                size: 22,
+            if (canWrite)
+              IconButton(
+                icon: const Icon(
+                  Icons.swap_horiz,
+                  color: Color(0xFF6366F1),
+                  size: 22,
+                ),
+                tooltip: 'Transferir de sala',
+                onPressed: onTransferir,
               ),
-              tooltip: 'Transferir de sala',
-              onPressed: onTransferir,
-            ),
           ],
         ),
       ),

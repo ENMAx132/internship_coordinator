@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
-/// Muestra la imagen de un icono si existe y el emoji como respaldo.
+/// Muestra la imagen remota de un icono si existe y el emoji como respaldo.
 class IconoWidget extends StatelessWidget {
-  final String? imagePath;
+  final String? imageUrl;
   final String emoji;
   final double fontSize;
   final double? size;
@@ -13,7 +11,7 @@ class IconoWidget extends StatelessWidget {
   const IconoWidget({
     super.key,
     required this.emoji,
-    this.imagePath,
+    this.imageUrl,
     this.fontSize = 24,
     this.size,
     this.borderRadius,
@@ -23,11 +21,15 @@ class IconoWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final diametro = size ?? fontSize * 2.2;
     Widget contenido;
-    if (imagePath != null && imagePath!.trim().isNotEmpty) {
-      contenido = Image.file(
-        File(imagePath!),
+    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+      contenido = Image.network(
+        imageUrl!,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => _construirFallback(),
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return _construirFallback();
+        },
       );
     } else {
       contenido = _construirFallback();

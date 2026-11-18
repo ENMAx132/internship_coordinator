@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../../data/inventario_data.dart';
-import '../../models/espacio.dart';
-import '../../models/objeto_inventario.dart';
+import '../../models/catalog.dart';
+import '../../models/drafts.dart';
+import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class CrearObjetoDialog extends StatefulWidget {
-  final List<Espacio> espacios;
+  final List<Space> spaces;
+  final Catalogs catalogs;
   final String placaInicial;
-  final ValueChanged<ObjetoInventario> onGuardar;
+  final ValueChanged<ItemDraft> onGuardar;
 
   const CrearObjetoDialog({
     super.key,
-    required this.espacios,
+    required this.spaces,
+    required this.catalogs,
     required this.placaInicial,
     required this.onGuardar,
   });
@@ -27,13 +29,22 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late final TextEditingController marcaCtrl;
   late final TextEditingController respCtrl;
   late final TextEditingController valorCtrl;
-  late String espacioIdSelec;
-  late String categoriaSelec;
-  late String estadoSelec;
-  String? imagePathSelec;
+  late int spaceIdSelec;
+  late String categoryCodeSelec;
+  late String statusCodeSelec;
+  String? localImagePath;
   bool _nombreInvalido = false;
-  bool _placaInvalida = false;
   bool _valorInvalido = false;
+
+  List<CatalogEntry> get _categories => widget.catalogs.categories.isEmpty
+      ? const [CatalogEntry(id: 0, code: 'general', name: 'General')]
+      : widget.catalogs.categories;
+
+  List<CatalogEntry> get _statuses => widget.catalogs.statuses.isEmpty
+      ? const [
+          CatalogEntry(id: 0, code: 'excellent', name: 'Excelente'),
+        ]
+      : widget.catalogs.statuses;
 
   int _paso = 0;
 
@@ -61,9 +72,9 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     marcaCtrl = TextEditingController();
     respCtrl = TextEditingController();
     valorCtrl = TextEditingController(text: '0');
-    espacioIdSelec = widget.espacios.isNotEmpty ? widget.espacios.first.id : '';
-    categoriaSelec = ObjetoInventario.categoriasDisponibles.first;
-    estadoSelec = ObjetoInventario.estadosDisponibles.first;
+    spaceIdSelec = widget.spaces.isNotEmpty ? widget.spaces.first.id : 0;
+    categoryCodeSelec = _categories.first.code;
+    statusCodeSelec = _statuses.first.code;
   }
 
   @override
@@ -81,18 +92,6 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
       setState(() => _nombreInvalido = true);
       return;
     }
-    if (!omitir && _paso == 2) {
-      final placa = placaCtrl.text.trim().isEmpty
-          ? widget.placaInicial.trim()
-          : placaCtrl.text.trim();
-      final duplicada = objetosIniciales.any(
-        (o) => o.placa.trim().toLowerCase() == placa.toLowerCase(),
-      );
-      if (duplicada) {
-        setState(() => _placaInvalida = true);
-        return;
-      }
-    }
     if (!omitir && _paso == 5) {
       final texto = valorCtrl.text.trim();
       if (texto.isNotEmpty) {
@@ -109,7 +108,6 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     }
     setState(() {
       _nombreInvalido = false;
-      _placaInvalida = false;
       _valorInvalido = false;
       _paso++;
     });
@@ -129,7 +127,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   void _limpiarPasoActual() {
     switch (_paso) {
       case 0:
-        imagePathSelec = null;
+        localImagePath = null;
         break;
       case 1:
         nombreCtrl.clear();
@@ -147,14 +145,14 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         valorCtrl.clear();
         break;
       case 6:
-        categoriaSelec = ObjetoInventario.categoriasDisponibles.first;
+        categoryCodeSelec = _categories.first.code;
         break;
       case 7:
-        estadoSelec = ObjetoInventario.estadosDisponibles.first;
+        statusCodeSelec = _statuses.first.code;
         break;
       default:
-        if (widget.espacios.isNotEmpty) {
-          espacioIdSelec = widget.espacios.first.id;
+        if (widget.spaces.isNotEmpty) {
+          spaceIdSelec = widget.spaces.first.id;
         }
         break;
     }
@@ -162,22 +160,19 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
 
   void _guardar() {
     widget.onGuardar(
-      ObjetoInventario(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        placa: placaCtrl.text.trim().isEmpty
-            ? widget.placaInicial
-            : placaCtrl.text.trim(),
-        nombre: nombreCtrl.text.trim().isEmpty
+      ItemDraft(
+        spaceId: spaceIdSelec,
+        name: nombreCtrl.text.trim().isEmpty
             ? 'Sin nombre'
             : nombreCtrl.text.trim(),
-        espacioId: espacioIdSelec,
-        categoria: categoriaSelec,
-        estado: estadoSelec,
-        valor: double.tryParse(valorCtrl.text.replaceAll(',', '.')) ?? 0.0,
-        responsable:
+        code: placaCtrl.text.trim(),
+        categoryCode: categoryCodeSelec,
+        statusCode: statusCodeSelec,
+        value: double.tryParse(valorCtrl.text.replaceAll(',', '.')) ?? 0.0,
+        responsible:
             respCtrl.text.trim().isEmpty ? 'Sin asignar' : respCtrl.text.trim(),
-        marca: marcaCtrl.text.trim(),
-        imagePath: imagePathSelec,
+        brand: marcaCtrl.text.trim(),
+        localImagePath: localImagePath,
       ),
     );
     Navigator.pop(context);
@@ -287,10 +282,9 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     switch (_paso) {
       case 0:
         return SelectorImagenIcono(
-          emoji:
-              widget.espacios.isNotEmpty ? widget.espacios.first.emoji : '📦',
-          imagePath: imagePathSelec,
-          onImagePicked: (p) => setState(() => imagePathSelec = p),
+          emoji: widget.spaces.isNotEmpty ? widget.spaces.first.emoji : '📦',
+          localImagePath: localImagePath,
+          onImagePicked: (p) => setState(() => localImagePath = p),
         );
       case 1:
         return TextField(
@@ -311,15 +305,9 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
       case 2:
         return TextField(
           controller: placaCtrl,
-          onChanged: (value) {
-            if (_placaInvalida) {
-              setState(() => _placaInvalida = false);
-            }
-          },
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Código / Placa',
-            errorText:
-                _placaInvalida ? 'Ya existe un objeto con esa placa' : null,
+            hintText: 'Vacío = el servidor genera ACT-###',
           ),
           onSubmitted: (_) => _avanzar(),
         );
@@ -355,44 +343,44 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         );
       case 6:
         return DropdownButtonFormField<String>(
-          initialValue: categoriaSelec,
+          initialValue: categoryCodeSelec,
           decoration: const InputDecoration(labelText: 'Tipo'),
-          items: ObjetoInventario.categoriasDisponibles.map((c) {
+          items: _categories.map((c) {
             return DropdownMenuItem(
-              value: c,
-              child: Text(c),
+              value: c.code,
+              child: Text(c.name),
             );
           }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => categoriaSelec = val);
+            if (val != null) setState(() => categoryCodeSelec = val);
           },
         );
       case 7:
         return DropdownButtonFormField<String>(
-          initialValue: estadoSelec,
+          initialValue: statusCodeSelec,
           decoration: const InputDecoration(labelText: 'Estado'),
-          items: ObjetoInventario.estadosDisponibles.map((e) {
+          items: _statuses.map((e) {
             return DropdownMenuItem(
-              value: e,
-              child: Text(e),
+              value: e.code,
+              child: Text(e.name),
             );
           }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => estadoSelec = val);
+            if (val != null) setState(() => statusCodeSelec = val);
           },
         );
       default:
-        return DropdownButtonFormField<String>(
-          initialValue: espacioIdSelec,
+        return DropdownButtonFormField<int>(
+          initialValue: spaceIdSelec,
           decoration: const InputDecoration(labelText: 'Espacio / Sala'),
-          items: widget.espacios.map((e) {
+          items: widget.spaces.map((e) {
             return DropdownMenuItem(
               value: e.id,
-              child: Text('${e.emoji} ${e.nombre}'),
+              child: Text('${e.emoji} ${e.name}'),
             );
           }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => espacioIdSelec = val);
+            if (val != null) setState(() => spaceIdSelec = val);
           },
         );
     }

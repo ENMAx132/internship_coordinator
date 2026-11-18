@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../models/apartado.dart';
+import '../../models/drafts.dart';
+import '../../models/section.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
 
 class EditarApartadoDialog extends StatefulWidget {
-  final Apartado apartado;
-  final ValueChanged<Apartado> onActualizar;
-  final ValueChanged<Apartado> onEliminar;
+  final Section section;
+  final ValueChanged<SectionDraft> onActualizar;
+  final VoidCallback onEliminar;
+  final List<String> emojis;
 
   const EditarApartadoDialog({
     super.key,
-    required this.apartado,
+    required this.section,
     required this.onActualizar,
     required this.onEliminar,
+    this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
   });
 
   @override
@@ -23,29 +26,18 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
   late final TextEditingController nombreCtrl;
   late final TextEditingController descCtrl;
   late String emojiSelec;
-  late String? imagePathSelec;
-  final emojis = [
-    '🏢',
-    '💻',
-    '📊',
-    '📦',
-    '🤝',
-    '☕',
-    '🔬',
-    '🛋️',
-    '🏠',
-    '🎮',
-    '📚',
-    '🔥',
-  ];
+  String? localImagePath;
+
+  List<String> get _emojis => widget.emojis.isEmpty
+      ? const ['🏢', '💻', '📊', '📦']
+      : widget.emojis;
 
   @override
   void initState() {
     super.initState();
-    nombreCtrl = TextEditingController(text: widget.apartado.nombre);
-    descCtrl = TextEditingController(text: widget.apartado.descripcion);
-    emojiSelec = widget.apartado.icono;
-    imagePathSelec = widget.apartado.imagePath;
+    nombreCtrl = TextEditingController(text: widget.section.name);
+    descCtrl = TextEditingController(text: widget.section.description);
+    emojiSelec = widget.section.icon;
   }
 
   @override
@@ -63,7 +55,7 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Eliminar apartado'),
         content: Text(
-          '¿Seguro que quieres eliminar "${widget.apartado.nombre}"? '
+          '¿Seguro que quieres eliminar "${widget.section.name}"? '
           'También se eliminarán sus espacios y objetos.',
         ),
         actions: [
@@ -84,7 +76,7 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
     );
     if (confirmado == true && mounted) {
       Navigator.pop(context);
-      widget.onEliminar(widget.apartado);
+      widget.onEliminar();
     }
   }
 
@@ -103,10 +95,11 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
           children: [
             SelectorImagenIcono(
               emoji: emojiSelec,
-              imagePath: imagePathSelec,
-              emojis: emojis,
+              imageUrl: widget.section.imageUrl,
+              localImagePath: localImagePath,
+              emojis: _emojis,
               size: 104,
-              onImagePicked: (p) => setState(() => imagePathSelec = p),
+              onImagePicked: (p) => setState(() => localImagePath = p),
               onEmojiChange: (e) => setState(() => emojiSelec = e),
             ),
             const SizedBox(height: 10),
@@ -139,14 +132,14 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
           onPressed: () {
             if (nombreCtrl.text.trim().isNotEmpty) {
               widget.onActualizar(
-                Apartado(
-                  id: widget.apartado.id,
-                  nombre: nombreCtrl.text.trim(),
-                  icono: emojiSelec,
-                  imagePath: imagePathSelec,
-                  descripcion: descCtrl.text.trim().isEmpty
+                SectionDraft(
+                  name: nombreCtrl.text.trim(),
+                  icon: emojiSelec,
+                  imageUrl: widget.section.imageUrl,
+                  description: descCtrl.text.trim().isEmpty
                       ? 'Nuevo apartado'
                       : descCtrl.text.trim(),
+                  localImagePath: localImagePath,
                 ),
               );
               Navigator.pop(context);

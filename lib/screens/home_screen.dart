@@ -1,28 +1,32 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_settings.dart';
-import '../data/inventario_data.dart';
-import '../models/apartado.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
-import '../models/registro_revision.dart';
+import '../core/api_exception.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/catalog.dart';
+import '../models/inventory_item.dart';
+import '../models/section.dart';
+import '../models/space.dart';
+import '../models/tutorial_pending.dart';
 import '../widgets/apartado_card.dart';
 import '../widgets/dialogos/crear_apartado_dialog.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
 import '../widgets/dialogos/crear_objeto_dialog.dart';
 import '../widgets/dialogos/editar_apartado_dialog.dart';
 import '../widgets/icono_widget.dart';
+import '../widgets/offline_banner.dart';
 import '../widgets/sector_card.dart';
 import '../widgets/tutorial_coach_marks.dart';
+import '../widgets/tutorial_pending_banner.dart';
 import 'apartado_screen.dart';
 import 'espacio_screen.dart';
 import 'historial_screen.dart';
 import 'metricas_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final List<Apartado> apartados;
+  const HomeScreen({super.key, required this.onLogout});
 
-  const HomeScreen({super.key, required this.apartados});
+  final VoidCallback onLogout;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -38,36 +42,226 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _keyMetricas = GlobalKey();
   final GlobalKey _keyDemoApartado = GlobalKey();
 
-  static const String _idDemoApartado = 'demo_tutorial_apartado';
-  static const String _idDemoEspacio = 'demo_tutorial_espacio';
-  static const String _idDemoObjeto = 'demo_tutorial_objeto';
-
   bool _mostrarTutorial = false;
-  String? _demoApartadoId;
-  String? _demoEspacioId;
-  String? _demoObjetoId;
-
-  List<Apartado> get _apartados => widget.apartados;
+  bool _tutorialBusy = false;
+  Section? _demoSection;
+  Space? _demoSpace;
+  InventoryItem? _demoItem;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!tutorialCompletado.value) {
+      final store = InventoryScope.of(context);
+      if (!store.settings.tutorialCompleted &&
+          !store.localTutorialCompleted &&
+          store.pendingTutorial == null &&
+          store.canWrite) {
         _limpiarDatosTutorial();
         setState(() => _mostrarTutorial = true);
       }
     });
   }
 
-  void _finalizarTutorial() {
+  InventoryStore get _store => InventoryScope.of(context);
+
+  List<Section> _sections(InventoryStore store) => [
+        ...store.sections,
+        if (_demoSection != null) _demoSection!,
+        if (store.tutorialSection != null) store.tutorialSection!,
+      ];
+
+  List<Space> _spacesOf(InventoryStore store, int sectionId) => [
+        ...store.spacesForSection(sectionId),
+        if (_demoSpace != null && _demoSpace!.sectionId == sectionId)
+          _demoSpace!,
+        if (store.tutorialSpace != null &&
+            store.tutorialSpace!.sectionId == sectionId)
+          store.tutorialSpace!,
+      ];
+
+  List<InventoryItem> _itemsOfSection(
+    InventoryStore store,
+    int sectionId,
+  ) =>
+      [
+        ...store.itemsForSection(sectionId),
+        if (_demoItem != null && _demoItem!.sectionId == sectionId) _demoItem!,
+        if (store.tutorialItem != null &&
+            store.tutorialItem!.sectionId == sectionId)
+          store.tutorialItem!,
+      ];
+
+  List<InventoryItem> _itemsOfSpace(InventoryStore store, int spaceId) => [
+        ...store.itemsForSpace(spaceId),
+        if (_demoItem != null && _demoItem!.spaceId == spaceId) _demoItem!,
+        if (store.tutorialItem != null &&
+            store.tutorialItem!.spaceId == spaceId)
+          store.tutorialItem!,
+      ];
+
+  Future<void> _finalizarTutorial() async {
+    if (_tutorialBusy) return;
+    final keep = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Datos de ejemplo',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          '¿Qué quieres hacer con el apartado, el espacio y el objeto de '
+          'ejemplo del tutorial?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Mantener'),
+          ),
+        ],
+      ),
+    );
+
+    if (keep == null || !mounted) return;
+
+    _tutorialBusy = true;
+    _mostrarAviso(
+      keep
+          ? 'Guardando datos del tutorial…'
+          : 'Eliminando datos del tutorial…',
+    );
+
+    final store = _store;
+    final pending = _buildTutorialPending(keep: keep);
+    TutorialFinishResult result;
+    try {
+      result = await store.finishTutorial(pending);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _tutorialBusy = false);
+        _mostrarAviso('No se pudieron guardar los datos del tutorial.');
+      }
+      return;
+    }
+
     _limpiarDatosTutorial();
-    marcarTutorialCompletado();
+    if (!mounted) return;
     setState(() {
       _mostrarTutorial = false;
       _paginaActual = 0;
+      _tutorialBusy = false;
     });
+
+    switch (result) {
+      case TutorialFinishResult.deleted:
+        _mostrarAviso('Datos del tutorial eliminados.');
+        break;
+      case TutorialFinishResult.synced:
+        _mostrarAviso('Datos del tutorial guardados en el inventario.');
+        break;
+      case TutorialFinishResult.pending:
+        _mostrarAviso(
+          'Datos del tutorial guardados localmente. Se sincronizarán cuando '
+          'haya conexión.',
+        );
+        break;
+    }
+  }
+
+  TutorialPending _buildTutorialPending({required bool keep}) {
+    final store = _store;
+    final section = _demoSection;
+    final space = _demoSpace;
+    final item = _demoItem;
+    final category = item?.category ??
+        (store.catalogs.categories.isNotEmpty
+            ? store.catalogs.categories.first
+            : const CatalogEntry(id: 0, code: 'general', name: 'General'));
+    final status = item?.status ??
+        (store.catalogs.statuses.isNotEmpty
+            ? store.catalogs.inReviewStatus
+            : const CatalogEntry(
+                id: 0,
+                code: 'in_review',
+                name: 'En revisión',
+                isInReview: true,
+              ));
+
+    return TutorialPending(
+      sectionName: section?.name ?? 'Apartado de ejemplo',
+      sectionDescription:
+          section?.description ?? 'Creado por el tutorial',
+      sectionIcon: section?.icon ?? '🏢',
+      spaceName: space?.name ?? 'Espacio de ejemplo',
+      spaceDescription: space?.description ?? 'Creado por el tutorial',
+      spaceEmoji: space?.emoji ?? '💻',
+      itemName: item?.name ?? 'Objeto de ejemplo',
+      itemCode: TutorialPending.fixedItemCode,
+      categoryCode: category.code,
+      statusCode: status.code,
+      value: item?.value ?? 100,
+      responsible: item?.responsible ?? 'Tutorial',
+      brand: item?.brand ?? 'Demo',
+      createdAt: DateTime.now(),
+      decision: keep ? TutorialDecision.keep : TutorialDecision.delete,
+    );
+  }
+
+  Future<void> _confirmDiscardPendingTutorial() async {
+    final store = _store;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('Descartar datos del tutorial'),
+        content: const Text(
+          'Se eliminarán los datos locales. Si parte ya se subió a la API, '
+          'también se eliminará cuando haya conexión.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await store.discardPendingTutorial();
+    if (!mounted) return;
+    _mostrarAviso('Datos del tutorial descartados.');
   }
 
   void _prepararPaso(int indice) {
@@ -101,78 +295,88 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _crearDemoApartado() {
-    if (_demoApartadoId != null) return;
-    _demoApartadoId = _idDemoApartado;
-    widget.apartados.add(
-      Apartado(
-        id: _demoApartadoId!,
-        nombre: 'Apartado de ejemplo',
-        icono: '🏢',
-        descripcion: 'Creado por el tutorial',
-      ),
+  CatalogEntry _demoCategory(InventoryStore store) {
+    if (store.catalogs.categories.isNotEmpty) {
+      return store.catalogs.categories.first;
+    }
+    return const CatalogEntry(id: 0, code: 'general', name: 'General');
+  }
+
+  CatalogEntry _demoStatus(InventoryStore store) {
+    if (store.catalogs.statuses.isNotEmpty) {
+      return store.catalogs.inReviewStatus;
+    }
+    return const CatalogEntry(
+      id: 0,
+      code: 'in_review',
+      name: 'En revisión',
+      isInReview: true,
     );
-    setState(() => _paginaActual = 1);
+  }
+
+  void _crearDemoApartado() {
+    if (_demoSection != null) return;
+    setState(() {
+      _demoSection = const Section(
+        id: TutorialPending.localSectionId,
+        name: 'Apartado de ejemplo',
+        icon: '🏢',
+        description: 'Creado por el tutorial',
+        sortOrder: 0,
+        spaceCount: 0,
+        itemCount: 0,
+        totalValue: 0,
+      );
+      _paginaActual = 1;
+    });
   }
 
   void _crearDemoEspacio() {
-    if (_demoApartadoId == null || _demoEspacioId != null) return;
-    _demoEspacioId = _idDemoEspacio;
-    espaciosIniciales.add(
-      Espacio(
-        id: _demoEspacioId!,
-        nombre: 'Espacio de ejemplo',
-        descripcion: 'Creado por el tutorial',
+    if (_demoSection == null || _demoSpace != null) return;
+    setState(() {
+      _demoSpace = const Space(
+        id: TutorialPending.localSpaceId,
+        sectionId: TutorialPending.localSectionId,
+        name: 'Espacio de ejemplo',
+        description: 'Creado por el tutorial',
         emoji: '💻',
-        apartadoId: _demoApartadoId!,
-      ),
-    );
-    setState(() => _paginaActual = 1);
+        itemCount: 0,
+      );
+      _paginaActual = 1;
+    });
   }
 
   void _crearDemoObjeto() {
-    if (_demoEspacioId == null || _demoObjetoId != null) return;
-    _demoObjetoId = _idDemoObjeto;
-    objetosIniciales.add(
-      ObjetoInventario(
-        id: _demoObjetoId!,
-        placa: 'DEMO-001',
-        nombre: 'Objeto de ejemplo',
-        espacioId: _demoEspacioId!,
-        categoria: 'General',
-        estado: 'En revisión',
-        valor: 100,
-        responsable: 'Tutorial',
-        marca: 'Demo',
-      ),
-    );
-    historialRevisiones.add(
-      RegistroRevision(
-        id: 'demo_tutorial_revision',
-        objetoId: _idDemoObjeto,
-        nombre: 'Objeto de ejemplo',
-        placa: 'DEMO-001',
-        espacioId: _idDemoEspacio,
-        fechaEntrada: DateTime.now(),
-      ),
-    );
-    inventarioVersion.value++;
-    setState(() => _paginaActual = 1);
+    if (_demoSpace == null || _demoItem != null) return;
+    final store = _store;
+    final now = DateTime.now();
+    setState(() {
+      _demoItem = InventoryItem(
+        id: TutorialPending.localItemId,
+        code: TutorialPending.fixedItemCode,
+        name: 'Objeto de ejemplo',
+        spaceId: TutorialPending.localSpaceId,
+        spaceName: 'Espacio de ejemplo',
+        spaceEmoji: '💻',
+        sectionId: TutorialPending.localSectionId,
+        sectionName: 'Apartado de ejemplo',
+        sectionIcon: '🏢',
+        category: _demoCategory(store),
+        status: _demoStatus(store),
+        value: 100,
+        responsible: 'Tutorial',
+        brand: 'Demo',
+        registeredAt: now,
+        inReviewAt: now,
+      );
+      _paginaActual = 1;
+    });
   }
 
   void _limpiarDatosTutorial() {
-    objetosIniciales.removeWhere(
-      (o) => o.id == _idDemoObjeto || o.espacioId == _idDemoEspacio,
-    );
-    espaciosIniciales.removeWhere(
-      (e) => e.id == _idDemoEspacio || e.apartadoId == _idDemoApartado,
-    );
-    widget.apartados.removeWhere((a) => a.id == _idDemoApartado);
-    historialRevisiones.removeWhere((r) => r.objetoId == _idDemoObjeto);
-    _demoObjetoId = null;
-    _demoEspacioId = null;
-    _demoApartadoId = null;
-    inventarioVersion.value++;
+    _demoSection = null;
+    _demoSpace = null;
+    _demoItem = null;
     if (mounted) setState(() {});
   }
 
@@ -264,148 +468,181 @@ class _HomeScreenState extends State<HomeScreen> {
         emoji: '✨',
         titulo: '¡Todo listo!',
         descripcion:
-            'Al terminar el tutorial, el apartado, el espacio y el objeto de '
-            'ejemplo se eliminarán automáticamente. Tú podrás crear los tuyos '
-            'con el botón Agregar.',
+            'Al terminar, podrás decidir si mantienes o eliminas el apartado, '
+            'el espacio y el objeto de ejemplo. Tú podrás crear los tuyos con '
+            'el botón Agregar.',
       ),
     ];
   }
 
-  int _espaciosDe(Apartado apartado) {
-    return espaciosIniciales.where((e) => e.apartadoId == apartado.id).length;
+  Future<void> _run(
+    Future<void> Function() action, {
+    String? success,
+  }) async {
+    final store = _store;
+    try {
+      await action();
+      if (success != null) _mostrarAviso(success);
+    } on ApiException catch (error) {
+      store.handleError(error);
+      _mostrarAviso(messageForApiError(error));
+    } catch (_) {
+      _mostrarAviso('Ocurrió un error inesperado.');
+    }
   }
-
-  int _objetosDe(Apartado apartado) {
-    final ids = espaciosIniciales
-        .where((e) => e.apartadoId == apartado.id)
-        .map((e) => e.id)
-        .toSet();
-    return objetosIniciales.where((o) => ids.contains(o.espacioId)).length;
-  }
-
-  int get _totalEspacios => espaciosIniciales.length;
-
-  int get _totalObjetos => objetosIniciales.length;
 
   void _crearApartado() {
+    final store = _store;
     showDialog(
       context: context,
       builder: (ctx) => CrearApartadoDialog(
-        onCrear: (apartado) {
-          setState(() {
-            _apartados.add(apartado);
-            notificarCambioInventario();
-          });
+        emojis: store.catalogs.sectionEmojis,
+        onCrear: (draft) {
+          _run(
+            () => store.createSection(draft),
+            success: 'Apartado creado correctamente.',
+          );
         },
       ),
     );
   }
 
   void _crearEspacio() {
-    if (_apartados.isEmpty) {
+    final store = _store;
+    if (store.sections.isEmpty) {
       _mostrarAviso('Crea primero un apartado.');
       return;
     }
     showDialog(
       context: context,
       builder: (ctx) => CrearEspacioDialog(
-        apartados: _apartados,
-        onCrear: (espacio) {
-          setState(() {
-            espaciosIniciales.add(espacio);
-            notificarCambioInventario();
-          });
+        sections: store.sections,
+        onCrear: (draft) {
+          _run(
+            () => store.createSpace(draft),
+            success: 'Espacio creado correctamente.',
+          );
         },
       ),
     );
   }
 
-  void _crearObjeto() {
-    if (espaciosIniciales.isEmpty) {
+  Future<void> _crearObjeto() async {
+    final store = _store;
+    if (store.spaces.isEmpty) {
       _mostrarAviso('Crea primero un espacio.');
       return;
     }
+
+    var placa = '';
+    try {
+      placa = await store.nextCode();
+    } catch (_) {
+      placa = '';
+    }
+    if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (ctx) => CrearObjetoDialog(
-        espacios: espaciosIniciales,
-        placaInicial: generarPlacaUnica(),
-        onGuardar: (objeto) {
-          setState(() {
-            objetosIniciales.add(objeto);
-            notificarCambioInventario();
-          });
-          _mostrarAviso('Objeto agregado correctamente.');
+        spaces: store.spaces,
+        catalogs: store.catalogs,
+        placaInicial: placa,
+        onGuardar: (draft) {
+          _run(
+            () => store.createItem(draft),
+            success: 'Objeto agregado correctamente.',
+          );
         },
       ),
     );
   }
 
   void _mostrarAviso(String mensaje) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje)),
     );
   }
 
-  void _abrirApartado(Apartado apartado) {
+  bool _esApartadoPendiente(Section section) {
+    final pending = _store.pendingTutorial;
+    if (pending == null) return false;
+    if (section.id == TutorialPending.localSectionId) return true;
+    if (pending.remoteSectionId != null &&
+        section.id == pending.remoteSectionId) {
+      return _store.sectionById(section.id) == null;
+    }
+    return false;
+  }
+
+  bool _esEspacioPendiente(Space space) {
+    final pending = _store.pendingTutorial;
+    if (pending == null) return false;
+    if (space.id == TutorialPending.localSpaceId) return true;
+    if (pending.remoteSpaceId != null &&
+        space.id == pending.remoteSpaceId) {
+      return _store.spaceById(space.id) == null;
+    }
+    return false;
+  }
+
+  void _abrirApartado(Section section) {
+    if (_esApartadoPendiente(section)) {
+      _mostrarAviso(
+        'Este apartado se sincronizará cuando haya conexión.',
+      );
+      return;
+    }
+    if (section.id < 0) {
+      _mostrarAviso('Este apartado es solo un ejemplo del tutorial.');
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ApartadoScreen(
-          apartado: apartado,
-          apartados: _apartados,
-        ),
+        builder: (_) => ApartadoScreen(section: section),
       ),
-    ).then((_) {
-      if (mounted) setState(() {});
-    });
+    );
   }
 
-  void _dialogoEditarApartado(Apartado apartado) {
+  void _abrirEspacio(Space space) {
+    if (_esEspacioPendiente(space)) {
+      _mostrarAviso(
+        'Este espacio se sincronizará cuando haya conexión.',
+      );
+      return;
+    }
+    if (space.id < 0) {
+      _mostrarAviso('Este espacio es solo un ejemplo del tutorial.');
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EspacioScreen(space: space),
+      ),
+    );
+  }
+
+  void _dialogoEditarApartado(Section section) {
+    if (section.id < 0) return;
+    final store = _store;
     showDialog(
       context: context,
       builder: (ctx) => EditarApartadoDialog(
-        apartado: apartado,
-        onActualizar: (a) {
-          String? imagenAnterior;
-          setState(() {
-            final index = _apartados.indexWhere((item) => item.id == a.id);
-            if (index != -1) {
-              imagenAnterior = _apartados[index].imagePath;
-              _apartados[index] = a;
-              notificarCambioInventario();
-            }
-          });
-          eliminarImagenHuerfana(imagenAnterior);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Apartado actualizado con éxito.')),
+        section: section,
+        emojis: store.catalogs.sectionEmojis,
+        onActualizar: (draft) {
+          _run(
+            () => store.updateSection(section.id, draft),
+            success: 'Apartado actualizado con éxito.',
           );
         },
-        onEliminar: (a) {
-          final espacios =
-              espaciosIniciales.where((e) => e.apartadoId == a.id).toList();
-          final ids = espacios.map((e) => e.id).toSet();
-          final objetos =
-              objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
-          final imagenes = <String?>[
-            a.imagePath,
-            ...espacios.map((e) => e.imagePath),
-            ...objetos.map((o) => o.imagePath),
-          ];
-          setState(() {
-            registrarEliminacionEnHistorial(objetos.map((o) => o.id).toSet());
-            _apartados.removeWhere((item) => item.id == a.id);
-            espaciosIniciales.removeWhere((e) => e.apartadoId == a.id);
-            objetosIniciales.removeWhere((o) => ids.contains(o.espacioId));
-            notificarCambioInventario();
-          });
-          Future<void>.delayed(const Duration(seconds: 5), () {
-            eliminarImagenesHuerfanas(imagenes);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Apartado eliminado correctamente.'),
-            ),
+        onEliminar: () {
+          _run(
+            () => store.deleteSection(section.id),
+            success: 'Apartado eliminado correctamente.',
           );
         },
       ),
@@ -413,6 +650,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _mostrarMenuAgregar() {
+    final store = _store;
+    if (!store.canWrite || store.offline) {
+      _mostrarAviso('No puedes crear elementos en este momento.');
+      return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -482,21 +724,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = _store;
+    final canWrite = store.canWrite && !store.offline;
+
     return Stack(
       children: [
         Scaffold(
           body: SafeArea(
-            child: IndexedStack(
-              index: _paginaActual,
+            child: Column(
               children: [
-                _construirInicio(),
-                _construirApartados(),
-                const HistorialScreen(),
-                MetricasScreen(apartados: _apartados),
+                if (store.offline)
+                  OfflineBanner(
+                    message:
+                        'Sin conexión. Mostrando datos guardados. Los cambios '
+                        'están deshabilitados.',
+                    onRetry: store.retryConnection,
+                  ),
+                if (store.pendingTutorial != null)
+                  TutorialPendingBanner(
+                    pending: store.pendingTutorial!,
+                    syncing: store.tutorialSyncing,
+                    error: store.tutorialSyncError,
+                    onRetry: () async {
+                      await store.syncPendingTutorial();
+                    },
+                    onDiscard: store.pendingTutorial!.isKeep
+                        ? _confirmDiscardPendingTutorial
+                        : null,
+                  ),
+                Expanded(
+                  child: IndexedStack(
+                    index: _paginaActual,
+                    children: [
+                      _construirInicio(store, canWrite),
+                      _construirApartados(store, canWrite),
+                      HistorialScreen(onLogout: widget.onLogout),
+                      MetricasScreen(onLogout: widget.onLogout),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          bottomNavigationBar: _construirBarraNavegacion(),
+          bottomNavigationBar: _construirBarraNavegacion(store, canWrite),
         ),
         if (_mostrarTutorial)
           TutorialCoachMarks(
@@ -508,11 +778,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _construirInicio() {
-    if (_apartados.isEmpty) {
+  Widget _construirInicio(InventoryStore store, bool canWrite) {
+    final sections = _sections(store);
+    if (sections.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-        child: _construirApartadoVacio(),
+        child: _construirApartadoVacio(canWrite),
       );
     }
 
@@ -521,37 +792,54 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Inicio',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E293B),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Desliza para cambiar de apartado',
-            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Inicio',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Desliza para cambiar de apartado',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: widget.onLogout,
+                tooltip: 'Cerrar sesión',
+                icon: const Icon(
+                  Icons.logout,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: AnimatedBuilder(
-              animation: Listenable.merge([
-                apartadoInicioId,
-                apartadosOrdenVersion,
-              ]),
-              builder: (context, _) {
-                return _InicioApartados(
-                  apartados: _apartados,
-                  apartadoInicialId: apartadoInicioId.value,
-                  ordenVersion: apartadosOrdenVersion.value,
-                  onRefresh: () {
-                    if (mounted) setState(() {});
-                  },
-                );
-              },
+            child: _InicioApartados(
+              sections: sections,
+              apartadoInicialId: store.settings.startSectionId,
+              spacesOf: (sectionId) => _spacesOf(store, sectionId),
+              itemsOfSection: (sectionId) =>
+                  _itemsOfSection(store, sectionId),
+              itemsOfSpace: (spaceId) => _itemsOfSpace(store, spaceId),
+              onOpenSection: _abrirApartado,
+              onOpenSpace: _abrirEspacio,
             ),
           ),
         ],
@@ -559,25 +847,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _construirApartados() {
+  Widget _construirApartados(InventoryStore store, bool canWrite) {
+    final sections = _sections(store);
+    final totalSpaces = sections.fold<int>(
+      0,
+      (total, section) => total + _spacesOf(store, section.id).length,
+    );
+    final totalItems = sections.fold<int>(
+      0,
+      (total, section) => total + _itemsOfSection(store, section.id).length,
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Apartados',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E293B),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Selecciona un apartado para ver sus espacios',
-            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Apartados',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Selecciona un apartado para ver sus espacios',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: widget.onLogout,
+                tooltip: 'Cerrar sesión',
+                icon: const Icon(
+                  Icons.logout,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           Row(
@@ -585,21 +906,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: _construirResumen(
                   etiqueta: 'Apartados',
-                  valor: '${_apartados.length}',
+                  valor: '${sections.length}',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _construirResumen(
                   etiqueta: 'Espacios',
-                  valor: '$_totalEspacios',
+                  valor: '$totalSpaces',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _construirResumen(
                   etiqueta: 'Objetos',
-                  valor: '$_totalObjetos',
+                  valor: '$totalItems',
                 ),
               ),
             ],
@@ -617,7 +938,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                '${_apartados.length} en total',
+                '${sections.length} en total',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF94A3B8),
@@ -628,8 +949,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: _apartados.isEmpty
-                ? _construirApartadoVacio()
+            child: sections.isEmpty
+                ? _construirApartadoVacio(canWrite)
                 : GridView.builder(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.only(bottom: 24),
@@ -640,19 +961,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSpacing: 14,
                       childAspectRatio: 0.95,
                     ),
-                    itemCount: _apartados.length,
+                    itemCount: sections.length,
                     itemBuilder: (context, index) {
-                      final apartado = _apartados[index];
+                      final section = sections[index];
                       return GestureDetector(
-                        key: apartado.id == _demoApartadoId
+                        key: section.id == TutorialPending.localSectionId
                             ? _keyDemoApartado
                             : null,
-                        onLongPress: () => _dialogoEditarApartado(apartado),
+                        onLongPress: canWrite &&
+                                section.id >= 0 &&
+                                !_esApartadoPendiente(section)
+                            ? () => _dialogoEditarApartado(section)
+                            : null,
                         child: ApartadoCard(
-                          apartado: apartado,
-                          espacios: _espaciosDe(apartado),
-                          objetos: _objetosDe(apartado),
-                          onTap: () => _abrirApartado(apartado),
+                          section: section,
+                          spaces: _spacesOf(store, section.id).length,
+                          objects: _itemsOfSection(store, section.id).length,
+                          onTap: () => _abrirApartado(section),
                         ),
                       );
                     },
@@ -702,7 +1027,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _construirApartadoVacio() {
+  Widget _construirApartadoVacio(bool canWrite) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -716,21 +1041,23 @@ class _HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
+          if (canWrite) ...[
+            const SizedBox(height: 12),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: _crearApartado,
+              child: const Text('Crear apartado'),
             ),
-            onPressed: _crearApartado,
-            child: const Text('Crear apartado'),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _construirBarraNavegacion() {
+  Widget _construirBarraNavegacion(InventoryStore store, bool canWrite) {
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -763,7 +1090,7 @@ class _HomeScreenState extends State<HomeScreen> {
               etiqueta: 'Apartados',
               pagina: 1,
             ),
-            _construirBotonAgregar(),
+            if (canWrite) _construirBotonAgregar(),
             _construirItemNav(
               clave: _keyHistorial,
               icono: Icons.chat_bubble_outline,
@@ -882,16 +1209,22 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _InicioApartados extends StatefulWidget {
-  final List<Apartado> apartados;
-  final String apartadoInicialId;
-  final int ordenVersion;
-  final VoidCallback onRefresh;
+  final List<Section> sections;
+  final int? apartadoInicialId;
+  final List<Space> Function(int sectionId) spacesOf;
+  final List<InventoryItem> Function(int sectionId) itemsOfSection;
+  final List<InventoryItem> Function(int spaceId) itemsOfSpace;
+  final ValueChanged<Section> onOpenSection;
+  final ValueChanged<Space> onOpenSpace;
 
   const _InicioApartados({
-    required this.apartados,
+    required this.sections,
     required this.apartadoInicialId,
-    required this.ordenVersion,
-    required this.onRefresh,
+    required this.spacesOf,
+    required this.itemsOfSection,
+    required this.itemsOfSpace,
+    required this.onOpenSection,
+    required this.onOpenSpace,
   });
 
   @override
@@ -913,7 +1246,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
   void didUpdateWidget(covariant _InicioApartados oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.apartadoInicialId != widget.apartadoInicialId ||
-        oldWidget.ordenVersion != widget.ordenVersion) {
+        oldWidget.sections.length != widget.sections.length) {
       final nuevoIndice = _indiceInicial();
       if (nuevoIndice != _pagina) {
         setState(() => _pagina = nuevoIndice);
@@ -933,31 +1266,10 @@ class _InicioApartadosState extends State<_InicioApartados> {
   }
 
   int _indiceInicial() {
-    final indice = widget.apartados.indexWhere(
-      (a) => a.id == widget.apartadoInicialId,
+    final indice = widget.sections.indexWhere(
+      (section) => section.id == widget.apartadoInicialId,
     );
     return indice < 0 ? 0 : indice;
-  }
-
-  void _abrirApartado(Apartado apartado) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ApartadoScreen(
-          apartado: apartado,
-          apartados: widget.apartados,
-        ),
-      ),
-    ).then((_) => widget.onRefresh());
-  }
-
-  void _abrirEspacio(Espacio espacio) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EspacioScreen(espacio: espacio),
-      ),
-    ).then((_) => widget.onRefresh());
   }
 
   @override
@@ -967,22 +1279,21 @@ class _InicioApartadosState extends State<_InicioApartados> {
         Expanded(
           child: PageView.builder(
             controller: _controller,
-            itemCount: widget.apartados.length,
+            itemCount: widget.sections.length,
             onPageChanged: (index) {
               setState(() => _pagina = index);
             },
             itemBuilder: (context, index) {
-              final apartado = widget.apartados[index];
-              return _construirPagina(apartado);
+              return _construirPagina(widget.sections[index]);
             },
           ),
         ),
-        if (widget.apartados.length > 1)
+        if (widget.sections.length > 1)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(widget.apartados.length, (index) {
+              children: List.generate(widget.sections.length, (index) {
                 final activo = index == _pagina;
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -1003,18 +1314,15 @@ class _InicioApartadosState extends State<_InicioApartados> {
     );
   }
 
-  Widget _construirPagina(Apartado apartado) {
-    final espacios =
-        espaciosIniciales.where((e) => e.apartadoId == apartado.id).toList();
-    final ids = espacios.map((e) => e.id).toSet();
-    final totalObjetos =
-        objetosIniciales.where((o) => ids.contains(o.espacioId)).length;
+  Widget _construirPagina(Section section) {
+    final spaces = widget.spacesOf(section.id);
+    final totalItems = widget.itemsOfSection(section.id).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GestureDetector(
-          onTap: () => _abrirApartado(apartado),
+          onTap: () => widget.onOpenSection(section),
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -1037,8 +1345,8 @@ class _InicioApartadosState extends State<_InicioApartados> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: IconoWidget(
-                    imagePath: apartado.imagePath,
-                    emoji: apartado.icono,
+                    imageUrl: section.imageUrl,
+                    emoji: section.icon,
                     fontSize: 30,
                   ),
                 ),
@@ -1048,7 +1356,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        apartado.nombre,
+                        section.name,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -1057,7 +1365,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        apartado.descripcion,
+                        section.description,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1067,7 +1375,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${espacios.length} espacios • $totalObjetos objetos',
+                        '${spaces.length} espacios • $totalItems objetos',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1099,7 +1407,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
               ),
             ),
             Text(
-              '${espacios.length} en este apartado',
+              '${spaces.length} en este apartado',
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF94A3B8),
@@ -1110,29 +1418,27 @@ class _InicioApartadosState extends State<_InicioApartados> {
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: espacios.isEmpty
-              ? _construirVacio(apartado)
+          child: spaces.isEmpty
+              ? _construirVacio(section)
               : GridView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 24),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                     childAspectRatio: 1.15,
                   ),
-                  itemCount: espacios.length,
+                  itemCount: spaces.length,
                   itemBuilder: (context, index) {
-                    final espacio = espacios[index];
-                    final conteo = objetosIniciales
-                        .where((o) => o.espacioId == espacio.id)
-                        .length;
+                    final space = spaces[index];
                     return SectorCard(
-                      espacio: espacio,
-                      conteo: conteo,
+                      space: space,
+                      count: widget.itemsOfSpace(space.id).length,
                       isSelected: false,
-                      onTap: () => _abrirEspacio(espacio),
-                      onLongPress: () => _abrirApartado(apartado),
+                      onTap: () => widget.onOpenSpace(space),
+                      onLongPress: () => widget.onOpenSection(section),
                     );
                   },
                 ),
@@ -1141,7 +1447,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
     );
   }
 
-  Widget _construirVacio(Apartado apartado) {
+  Widget _construirVacio(Section section) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1149,7 +1455,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
           const Text('🗂️', style: TextStyle(fontSize: 44)),
           const SizedBox(height: 10),
           Text(
-            '${apartado.nombre} aún no tiene espacios',
+            '${section.name} aún no tiene espacios',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF94A3B8),
@@ -1162,7 +1468,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
               backgroundColor: const Color(0xFF6366F1),
               foregroundColor: Colors.white,
             ),
-            onPressed: () => _abrirApartado(apartado),
+            onPressed: () => widget.onOpenSection(section),
             child: const Text('Abrir apartado'),
           ),
         ],

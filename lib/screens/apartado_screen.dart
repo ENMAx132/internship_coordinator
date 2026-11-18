@@ -1,72 +1,161 @@
 import 'package:flutter/material.dart';
 
-import '../data/inventario_data.dart';
-import '../models/apartado.dart';
-import '../models/espacio.dart';
-import '../models/objeto_inventario.dart';
-import '../widgets/dialogos/editar_espacio_dialog.dart';
-import '../widgets/dialogos/editar_apartado_dialog.dart';
+import '../core/api_exception.dart';
+import '../core/inventory_scope.dart';
+import '../data/inventory_store.dart';
+import '../models/section.dart';
+import '../models/space.dart';
 import '../widgets/dialogos/crear_espacio_dialog.dart';
+import '../widgets/dialogos/editar_apartado_dialog.dart';
+import '../widgets/dialogos/editar_espacio_dialog.dart';
 import '../widgets/icono_widget.dart';
+import '../widgets/offline_banner.dart';
 import '../widgets/sector_card.dart';
 import 'espacio_screen.dart';
 
 class ApartadoScreen extends StatefulWidget {
-  final Apartado apartado;
-  final List<Apartado> apartados;
+  final Section section;
 
-  const ApartadoScreen(
-      {super.key, required this.apartado, required this.apartados});
+  const ApartadoScreen({super.key, required this.section});
 
   @override
   State<ApartadoScreen> createState() => _ApartadoScreenState();
 }
 
 class _ApartadoScreenState extends State<ApartadoScreen> {
-  late Apartado _apartado;
+  InventoryStore get _store => InventoryScope.of(context);
 
-  @override
-  void initState() {
-    super.initState();
-    _apartado = widget.apartado;
+  Section get _section =>
+      _store.sectionById(widget.section.id) ?? widget.section;
+
+  Future<void> _run(
+    Future<void> Function() action, {
+    String? success,
+  }) async {
+    final store = _store;
+    try {
+      await action();
+      if (success != null) _mostrarAviso(success);
+    } on ApiException catch (error) {
+      store.handleError(error);
+      _mostrarAviso(messageForApiError(error));
+    } catch (_) {
+      _mostrarAviso('Ocurrió un error inesperado.');
+    }
   }
 
-  List<Espacio> get _espacios {
-    return espaciosIniciales
-        .where((e) => e.apartadoId == _apartado.id)
-        .toList();
+  void _mostrarAviso(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
   }
 
-  List<ObjetoInventario> get _objetos {
-    final ids = _espacios.map((e) => e.id).toSet();
-    return objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
+  void _abrirEspacio(Space space) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EspacioScreen(space: space),
+      ),
+    );
   }
 
-  int _conteoPorEspacio(String espacioId) {
-    return objetosIniciales.where((o) => o.espacioId == espacioId).length;
+  void _dialogoEditarApartado() {
+    final store = _store;
+    showDialog(
+      context: context,
+      builder: (ctx) => EditarApartadoDialog(
+        section: _section,
+        onActualizar: (draft) {
+          _run(
+            () => store.updateSection(_section.id, draft),
+            success: 'Apartado actualizado con éxito.',
+          );
+        },
+        onEliminar: () {
+          _run(() async {
+            await store.deleteSection(_section.id);
+            if (mounted) Navigator.pop(context);
+          }, success: 'Apartado eliminado correctamente.');
+        },
+      ),
+    );
+  }
+
+  void _dialogoCrearEspacio() {
+    final store = _store;
+    showDialog(
+      context: context,
+      builder: (ctx) => CrearEspacioDialog(
+        sections: [_section],
+        emojis: store.catalogs.spaceEmojis,
+        onCrear: (draft) {
+          _run(
+            () => store.createSpace(draft),
+            success: 'Espacio creado correctamente.',
+          );
+        },
+      ),
+    );
+  }
+
+  void _dialogoEditarEspacio(Space space) {
+    final store = _store;
+    showDialog(
+      context: context,
+      builder: (ctx) => EditarEspacioDialog(
+        space: space,
+        sections: store.sections,
+        emojis: store.catalogs.spaceEmojis,
+        onActualizar: (draft) {
+          _run(
+            () => store.updateSpace(space.id, draft),
+            success: 'Espacio actualizado con éxito.',
+          );
+        },
+        onEliminar: () {
+          _run(
+            () => store.deleteSpace(space.id),
+            success: 'Espacio eliminado correctamente.',
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = _store;
+    final canWrite = store.canWrite && !store.offline;
+    final section = _section;
+    final spaces = store.spacesForSection(section.id);
+    final itemCount = store.itemsForSection(section.id).length;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(_apartado.nombre),
+        title: Text(section.name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Editar apartado',
-            onPressed: _dialogoEditarApartado,
-          ),
+          if (canWrite)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Editar apartado',
+              onPressed: _dialogoEditarApartado,
+            ),
         ],
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (store.offline)
+              OfflineBanner(
+                message: 'Sin conexión. Los cambios están deshabilitados.',
+                onRetry: store.retryConnection,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Container(
@@ -91,8 +180,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: IconoWidget(
-                        imagePath: _apartado.imagePath,
-                        emoji: _apartado.icono,
+                        imageUrl: section.imageUrl,
+                        emoji: section.icon,
                         fontSize: 30,
                       ),
                     ),
@@ -102,7 +191,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _apartado.nombre,
+                            section.name,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -111,7 +200,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _apartado.descripcion,
+                            section.description,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF64748B),
@@ -119,7 +208,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${_espacios.length} espacios • ${_objetos.length} objetos',
+                            '${spaces.length} espacios • $itemCount objetos',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -146,26 +235,30 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                       color: Color(0xFF0F172A),
                     ),
                   ),
-                  InkWell(
-                    onTap: _dialogoCrearEspacio,
-                    borderRadius: BorderRadius.circular(50),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF6366F1),
-                        shape: BoxShape.circle,
+                  if (canWrite)
+                    InkWell(
+                      onTap: _dialogoCrearEspacio,
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF6366F1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child:
-                          const Icon(Icons.add, color: Colors.white, size: 20),
                     ),
-                  ),
                 ],
               ),
             ),
             Expanded(
-              child: _espacios.isEmpty
-                  ? _construirEspacioVacio()
+              child: spaces.isEmpty
+                  ? _construirEspacioVacio(canWrite)
                   : GridView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -176,15 +269,17 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                         mainAxisSpacing: 14,
                         childAspectRatio: 1.15,
                       ),
-                      itemCount: _espacios.length,
+                      itemCount: spaces.length,
                       itemBuilder: (context, index) {
-                        final espacio = _espacios[index];
+                        final space = spaces[index];
                         return SectorCard(
-                          espacio: espacio,
-                          conteo: _conteoPorEspacio(espacio.id),
+                          space: space,
+                          count: store.itemsForSpace(space.id).length,
                           isSelected: false,
-                          onTap: () => _abrirEspacio(espacio),
-                          onLongPress: () => _dialogoEditarEspacio(espacio),
+                          onTap: () => _abrirEspacio(space),
+                          onLongPress: canWrite
+                              ? () => _dialogoEditarEspacio(space)
+                              : () {},
                         );
                       },
                     ),
@@ -195,7 +290,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     );
   }
 
-  Widget _construirEspacioVacio() {
+  Widget _construirEspacioVacio(bool canWrite) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -209,142 +304,18 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
+          if (canWrite) ...[
+            const SizedBox(height: 12),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: _dialogoCrearEspacio,
+              child: const Text('Agregar espacio'),
             ),
-            onPressed: _dialogoCrearEspacio,
-            child: const Text('Agregar espacio'),
-          ),
+          ],
         ],
-      ),
-    );
-  }
-
-  void _abrirEspacio(Espacio espacio) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EspacioScreen(espacio: espacio),
-      ),
-    ).then((_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  void _dialogoEditarApartado() {
-    showDialog(
-      context: context,
-      builder: (ctx) => EditarApartadoDialog(
-        apartado: _apartado,
-        onActualizar: (a) {
-          String? imagenAnterior;
-          setState(() {
-            imagenAnterior = _apartado.imagePath;
-            _apartado = a;
-            final index =
-                widget.apartados.indexWhere((item) => item.id == a.id);
-            if (index != -1) {
-              widget.apartados[index] = a;
-              notificarCambioInventario();
-            }
-          });
-          eliminarImagenHuerfana(imagenAnterior);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Apartado actualizado con éxito.')),
-          );
-        },
-        onEliminar: (a) {
-          final espacios =
-              espaciosIniciales.where((e) => e.apartadoId == a.id).toList();
-          final ids = espacios.map((e) => e.id).toSet();
-          final objetos =
-              objetosIniciales.where((o) => ids.contains(o.espacioId)).toList();
-          final imagenes = <String?>[
-            a.imagePath,
-            ...espacios.map((e) => e.imagePath),
-            ...objetos.map((o) => o.imagePath),
-          ];
-          setState(() {
-            registrarEliminacionEnHistorial(objetos.map((o) => o.id).toSet());
-            widget.apartados.removeWhere((item) => item.id == a.id);
-            espaciosIniciales.removeWhere((e) => e.apartadoId == a.id);
-            objetosIniciales.removeWhere((o) => ids.contains(o.espacioId));
-            notificarCambioInventario();
-          });
-          Future<void>.delayed(const Duration(seconds: 5), () {
-            eliminarImagenesHuerfanas(imagenes);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Apartado eliminado correctamente.'),
-            ),
-          );
-          Navigator.pop(context);
-        },
-      ),
-    );
-  }
-
-  void _dialogoCrearEspacio() {
-    showDialog(
-      context: context,
-      builder: (ctx) => CrearEspacioDialog(
-        apartados: [_apartado],
-        onCrear: (espacio) {
-          setState(() {
-            espaciosIniciales.add(espacio);
-            notificarCambioInventario();
-          });
-        },
-      ),
-    );
-  }
-
-  void _dialogoEditarEspacio(Espacio espacio) {
-    showDialog(
-      context: context,
-      builder: (ctx) => EditarEspacioDialog(
-        espacio: espacio,
-        apartados: widget.apartados,
-        onActualizar: (e) {
-          String? imagenAnterior;
-          setState(() {
-            final index =
-                espaciosIniciales.indexWhere((item) => item.id == e.id);
-            if (index != -1) {
-              imagenAnterior = espaciosIniciales[index].imagePath;
-              espaciosIniciales[index] = e;
-              notificarCambioInventario();
-            }
-          });
-          eliminarImagenHuerfana(imagenAnterior);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Espacio actualizado con éxito.')),
-          );
-        },
-        onEliminar: (e) {
-          final objetos =
-              objetosIniciales.where((o) => o.espacioId == e.id).toList();
-          final imagenes = <String?>[
-            e.imagePath,
-            ...objetos.map((o) => o.imagePath),
-          ];
-          setState(() {
-            registrarEliminacionEnHistorial(objetos.map((o) => o.id).toSet());
-            espaciosIniciales.removeWhere((item) => item.id == e.id);
-            objetosIniciales.removeWhere((item) => item.espacioId == e.id);
-            notificarCambioInventario();
-          });
-          Future<void>.delayed(const Duration(seconds: 5), () {
-            eliminarImagenesHuerfanas(imagenes);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Espacio eliminado correctamente.')),
-          );
-        },
       ),
     );
   }
