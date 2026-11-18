@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../models/account.dart';
 import '../models/catalog.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_metrics.dart';
@@ -21,6 +22,7 @@ class InventoryCacheSnapshot {
     required this.reviews,
     required this.metrics,
     required this.savedAt,
+    this.accounts = const [],
   });
 
   final InventorySettings settings;
@@ -31,13 +33,22 @@ class InventoryCacheSnapshot {
   final List<Review> reviews;
   final InventoryMetrics metrics;
   final DateTime savedAt;
+  final List<Account> accounts;
 }
 
 /// Caché local de los datos de la API para el modo sin conexión.
+///
+/// El nombre del archivo incluye al usuario para no mezclar inventarios
+/// personales entre sesiones.
 class LocalInventoryCache {
-  static const _fileName = 'inventory_cache.json';
-  static const _version = 1;
+  LocalInventoryCache({this.userId = 0});
+
+  final int userId;
+
+  static const _version = 2;
   static Future<void> _writeQueue = Future<void>.value();
+
+  String get _fileName => 'inventory_cache_$userId.json';
 
   Future<File> _file() async {
     final directory = await getApplicationDocumentsDirectory();
@@ -76,6 +87,7 @@ class LocalInventoryCache {
                 Map<String, dynamic>.from(metricsRaw),
               )
             : InventoryMetrics.empty,
+        accounts: _list(data['accounts'], Account.fromJson),
         savedAt: DateTime.tryParse(data['saved_at'] as String? ?? '') ??
             DateTime.now(),
       );
@@ -92,6 +104,7 @@ class LocalInventoryCache {
     required List<InventoryItem> items,
     required List<Review> reviews,
     required InventoryMetrics metrics,
+    List<Account> accounts = const [],
   }) {
     final payload = {
       'version': _version,
@@ -103,6 +116,7 @@ class LocalInventoryCache {
       'items': items.map((e) => e.toJson()).toList(),
       'reviews': reviews.map((e) => e.toJson()).toList(),
       'metrics': metrics.toJson(),
+      'accounts': accounts.map((e) => e.toJson()).toList(),
     };
     _writeQueue = _writeQueue.then((_) => _write(payload));
     return _writeQueue;

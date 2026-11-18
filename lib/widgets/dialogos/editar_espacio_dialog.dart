@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/drafts.dart';
 import '../../models/section.dart';
 import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class EditarEspacioDialog extends StatefulWidget {
   final Space space;
@@ -12,6 +14,8 @@ class EditarEspacioDialog extends StatefulWidget {
   final List<Section> sections;
   final List<Space> spaces;
   final List<String> emojis;
+  final List<Account> accounts;
+  final bool canAssignUsers;
 
   const EditarEspacioDialog({
     super.key,
@@ -21,6 +25,8 @@ class EditarEspacioDialog extends StatefulWidget {
     required this.sections,
     this.spaces = const [],
     this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
+    this.accounts = const [],
+    this.canAssignUsers = false,
   });
 
   @override
@@ -34,10 +40,10 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
   String? localImagePath;
   late int sectionIdSelec;
   late int parentSpaceIdSelec;
+  late Set<int> _assignedIds;
 
-  List<String> get _emojis => widget.emojis.isEmpty
-      ? const ['🏢', '💻', '📊', '📦']
-      : widget.emojis;
+  List<String> get _emojis =>
+      widget.emojis.isEmpty ? const ['🏢', '💻', '📊', '📦'] : widget.emojis;
 
   List<Space> get _parentOptions {
     final descendants = Space.descendantIdsOf(
@@ -68,6 +74,7 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
     emojiSelec = widget.space.emoji;
     sectionIdSelec = widget.space.sectionId;
     parentSpaceIdSelec = widget.space.parentSpaceId ?? 0;
+    _assignedIds = widget.space.assignedUsers.map((user) => user.id).toSet();
   }
 
   @override
@@ -202,6 +209,27 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
                 }
               },
             ),
+            if (widget.canAssignUsers) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Usuarios asignados',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(height: 4),
+              UsuariosAsignadosSelector(
+                accounts: widget.accounts,
+                selectedIds: _assignedIds,
+                onChanged: (ids) => setState(() {
+                  _assignedIds
+                    ..clear()
+                    ..addAll(ids);
+                }),
+              ),
+            ],
           ],
         ),
       ),
@@ -229,11 +257,11 @@ class _EditarEspacioDialogState extends State<EditarEspacioDialog> {
                       ? 'Área de trabajo'
                       : descCtrl.text.trim(),
                   emoji: emojiSelec,
-                  parentSpaceId: parentSpaceIdSelec == 0
-                      ? null
-                      : parentSpaceIdSelec,
+                  parentSpaceId:
+                      parentSpaceIdSelec == 0 ? null : parentSpaceIdSelec,
                   imageUrl: widget.space.imageUrl,
                   localImagePath: localImagePath,
+                  assignedUserIds: _assignedIds.toList(),
                 ),
               );
               Navigator.pop(context);

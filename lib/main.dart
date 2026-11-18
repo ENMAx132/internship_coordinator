@@ -52,7 +52,7 @@ class _InventarioAppState extends State<InventarioApp> {
     final client = ApiClient(token: session.token);
     final store = InventoryStore(
       repository: InventoryRepository(client),
-      cache: LocalInventoryCache(),
+      cache: LocalInventoryCache(userId: session.user.id),
       session: session,
       sessionStore: _sessionStore,
       tutorialStore: TutorialStore(),

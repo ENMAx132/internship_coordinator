@@ -49,7 +49,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
 
   Future<void> _reordenar(int oldIndex, int newIndex) async {
     final store = _store;
-    if (!store.canWrite || store.offline) return;
+    if (!store.canReorderSections || store.offline) return;
     final ids = store.sections.map((section) => section.id).toList();
     if (oldIndex < 0 || oldIndex >= ids.length) return;
     final movido = ids.removeAt(oldIndex);
@@ -68,7 +68,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
   @override
   Widget build(BuildContext context) {
     final store = _store;
-    final canWrite = store.canWrite && !store.offline;
+    final canReorder = store.canReorderSections && !store.offline;
     final spaces = _spaces(store);
     final items = _items(store);
     final totalValue = _valorTotal(items);
@@ -217,7 +217,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            canWrite
+            canReorder
                 ? 'Arrastra desde el ícono para cambiar el orden de los '
                     'apartados en Inicio.'
                 : 'Resumen de cada apartado.',
@@ -235,7 +235,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
                 store,
                 store.sections[index],
                 index,
-                canWrite,
+                canReorder,
               );
             },
           ),
@@ -344,7 +344,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
     InventoryStore store,
     Section section,
     int index,
-    bool canWrite,
+    bool canReorder,
   ) {
     final spaces = _spacesDe(store, section);
     final items = _itemsDe(store, section);
@@ -393,7 +393,7 @@ class _MetricasScreenState extends State<MetricasScreen> {
                   size: 12,
                   color: Color(0xFF94A3B8),
                 ),
-                if (canWrite) ...[
+                if (canReorder) ...[
                   const SizedBox(width: 4),
                   ReorderableDragStartListener(
                     index: index,

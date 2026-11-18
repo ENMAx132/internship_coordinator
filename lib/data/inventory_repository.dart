@@ -1,6 +1,7 @@
 import '../core/api_client.dart';
 import '../core/api_exception.dart';
 import '../core/app_config.dart';
+import '../models/account.dart';
 import '../models/catalog.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_metrics.dart';
@@ -37,22 +38,53 @@ class InventoryRepository {
       Catalogs.fromJson(await _api.get('/catalogs'));
 
   // --- Métricas -------------------------------------------------------------
-  Future<InventoryMetrics> getMetrics({int? sectionId}) async =>
+  Future<InventoryMetrics> getMetrics({
+    int? sectionId,
+    int? userId,
+    String? ownership,
+  }) async =>
       InventoryMetrics.fromJson(
         await _api.get('/metrics', query: {
           if (sectionId != null) 'section_id': sectionId,
+          if (userId != null) 'user_id': userId,
+          if (ownership != null) 'ownership': ownership,
         }),
+      );
+
+  // --- Cuentas --------------------------------------------------------------
+  Future<List<Account>> fetchAccounts({
+    String? role,
+    String? status,
+    String? search,
+  }) =>
+      _fetchAll(
+        (page) => _api.get('/accounts', query: {
+          if (role != null && role.isNotEmpty) 'role': role,
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (search != null && search.trim().isNotEmpty) 'search': search,
+          'page': page,
+          'limit': 100,
+        }),
+        Account.fromJson,
       );
 
   // --- Apartados ------------------------------------------------------------
   Future<List<Section>> fetchSections({
     String? search,
     bool includeCounts = true,
+    int? userId,
+    int? ownerId,
+    int? assignedToUserId,
+    String? ownership,
   }) =>
       _fetchAll(
         (page) => _api.get('/sections', query: {
           if (search != null && search.isNotEmpty) 'search': search,
           'include_counts': includeCounts ? 1 : 0,
+          if (userId != null) 'user_id': userId,
+          if (ownerId != null) 'owner_id': ownerId,
+          if (assignedToUserId != null) 'assigned_to_user_id': assignedToUserId,
+          if (ownership != null) 'ownership': ownership,
           'page': page,
           'limit': 100,
         }),
@@ -68,6 +100,7 @@ class InventoryRepository {
     String? icon,
     String? imageUrl,
     int? sortOrder,
+    List<int> assignedUserIds = const [],
   }) async =>
       Section.fromJson(
         await _api.post('/sections', body: {
@@ -76,6 +109,7 @@ class InventoryRepository {
           if (icon != null) 'icon': icon,
           if (imageUrl != null) 'image_url': imageUrl,
           if (sortOrder != null) 'sort_order': sortOrder,
+          if (assignedUserIds.isNotEmpty) 'assigned_user_ids': assignedUserIds,
         }),
       );
 
@@ -95,11 +129,21 @@ class InventoryRepository {
     int sectionId, {
     String? search,
     bool includeCounts = true,
+    int? parentSpaceId,
+    int? userId,
+    int? ownerId,
+    int? assignedToUserId,
+    String? ownership,
   }) =>
       _fetchAll(
         (page) => _api.get('/sections/$sectionId/spaces', query: {
           if (search != null && search.isNotEmpty) 'search': search,
           'include_counts': includeCounts ? 1 : 0,
+          if (parentSpaceId != null) 'parent_space_id': parentSpaceId,
+          if (userId != null) 'user_id': userId,
+          if (ownerId != null) 'owner_id': ownerId,
+          if (assignedToUserId != null) 'assigned_to_user_id': assignedToUserId,
+          if (ownership != null) 'ownership': ownership,
           'page': page,
           'limit': 100,
         }),
@@ -116,6 +160,7 @@ class InventoryRepository {
     String? emoji,
     int? parentSpaceId,
     String? imageUrl,
+    List<int> assignedUserIds = const [],
   }) async =>
       Space.fromJson(
         await _api.post('/spaces', body: {
@@ -125,6 +170,7 @@ class InventoryRepository {
           if (emoji != null) 'emoji': emoji,
           if (parentSpaceId != null) 'parent_space_id': parentSpaceId,
           if (imageUrl != null) 'image_url': imageUrl,
+          if (assignedUserIds.isNotEmpty) 'assigned_user_ids': assignedUserIds,
         }),
       );
 
@@ -143,6 +189,10 @@ class InventoryRepository {
     String? brand,
     double? minValue,
     double? maxValue,
+    int? userId,
+    int? assignedToUserId,
+    int? responsibleUserId,
+    String? ownership,
     String sortBy = 'value',
     String sortDir = 'desc',
   }) =>
@@ -156,6 +206,11 @@ class InventoryRepository {
           if (brand != null && brand.isNotEmpty) 'brand': brand,
           if (minValue != null) 'min_value': minValue,
           if (maxValue != null) 'max_value': maxValue,
+          if (userId != null) 'user_id': userId,
+          if (assignedToUserId != null) 'assigned_to_user_id': assignedToUserId,
+          if (responsibleUserId != null)
+            'responsible_user_id': responsibleUserId,
+          if (ownership != null) 'ownership': ownership,
           'sort_by': sortBy,
           'sort_dir': sortDir,
           'page': page,
@@ -180,8 +235,10 @@ class InventoryRepository {
     Object? status,
     double? value,
     String? responsible,
+    int? responsibleUserId,
     String? brand,
     String? imageUrl,
+    List<int> assignedUserIds = const [],
   }) async =>
       InventoryItem.fromJson(
         await _api.post('/items', body: {
@@ -192,8 +249,11 @@ class InventoryRepository {
           if (status != null) 'status': status,
           if (value != null) 'value': value,
           if (responsible != null) 'responsible': responsible,
+          if (responsibleUserId != null)
+            'responsible_user_id': responsibleUserId,
           if (brand != null) 'brand': brand,
           if (imageUrl != null) 'image_url': imageUrl,
+          if (assignedUserIds.isNotEmpty) 'assigned_user_ids': assignedUserIds,
         }),
       );
 
@@ -282,8 +342,7 @@ class InventoryRepository {
       throw ApiException(
         statusCode: 201,
         message: 'La API subió la imagen pero no devolvió una URL.',
-        description:
-            'Respuesta recibida del endpoint de uploads: $json',
+        description: 'Respuesta recibida del endpoint de uploads: $json',
         endpoint: '/inventory/uploads/images',
         rawBody: json.toString(),
       );

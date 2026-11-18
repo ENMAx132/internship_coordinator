@@ -1,3 +1,4 @@
+import 'account.dart';
 import 'catalog.dart';
 
 class InventoryItem {
@@ -19,6 +20,9 @@ class InventoryItem {
     this.imageUrl,
     required this.registeredAt,
     this.inReviewAt,
+    this.isPersonal = false,
+    this.responsibleUser,
+    this.assignedUsers = const [],
   });
 
   final int id;
@@ -38,8 +42,19 @@ class InventoryItem {
   final String? imageUrl;
   final DateTime registeredAt;
   final DateTime? inReviewAt;
+  final bool isPersonal;
+  final UserRef? responsibleUser;
+  final List<UserRef> assignedUsers;
 
   bool get isInReview => status.isInReview;
+
+  bool get isAssigned =>
+      !isPersonal && (assignedUsers.isNotEmpty || responsibleUser != null);
+
+  /// Nombre a mostrar como responsable, priorizando la cuenta vinculada.
+  String get displayResponsible =>
+      responsibleUser?.name ??
+      (responsible.trim().isEmpty ? 'Sin asignar' : responsible);
 
   factory InventoryItem.fromJson(Map<String, dynamic> json) {
     final space = json['space'];
@@ -47,6 +62,8 @@ class InventoryItem {
     final spaceMap = space is Map ? Map<String, dynamic>.from(space) : null;
     final sectionMap =
         section is Map ? Map<String, dynamic>.from(section) : null;
+    final responsibleUser = json['responsible_user'];
+    final assigned = json['assigned_users'];
     return InventoryItem(
       id: (json['id'] as num).toInt(),
       code: json['code'] as String? ?? '',
@@ -54,7 +71,9 @@ class InventoryItem {
       spaceId: (json['space_id'] as num).toInt(),
       spaceName: spaceMap?['name'] as String? ?? '',
       spaceEmoji: spaceMap?['emoji'] as String? ?? '🏢',
-      sectionId: (json['section_id'] as num).toInt(),
+      sectionId: (json['section_id'] as num?)?.toInt() ??
+          (sectionMap?['id'] as num?)?.toInt() ??
+          0,
       sectionName: sectionMap?['name'] as String? ?? '',
       sectionIcon: sectionMap?['icon'] as String? ?? '🏢',
       category: CatalogEntry.fromJson(
@@ -74,6 +93,16 @@ class InventoryItem {
       inReviewAt: json['in_review_at'] == null
           ? null
           : DateTime.tryParse(json['in_review_at'] as String),
+      isPersonal: json['is_personal'] as bool? ?? false,
+      responsibleUser: responsibleUser is Map
+          ? UserRef.fromJson(Map<String, dynamic>.from(responsibleUser))
+          : null,
+      assignedUsers: assigned is List
+          ? assigned
+              .whereType<Map>()
+              .map((e) => UserRef.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : const [],
     );
   }
 
@@ -97,6 +126,9 @@ class InventoryItem {
         'image_url': imageUrl,
         'registered_at': registeredAt.toUtc().toIso8601String(),
         'in_review_at': inReviewAt?.toUtc().toIso8601String(),
+        'is_personal': isPersonal,
+        'responsible_user': responsibleUser?.toJson(),
+        'assigned_users': assignedUsers.map((e) => e.toJson()).toList(),
       };
 
   InventoryItem copyWith({
@@ -117,6 +149,9 @@ class InventoryItem {
     String? imageUrl,
     DateTime? registeredAt,
     DateTime? inReviewAt,
+    bool? isPersonal,
+    UserRef? responsibleUser,
+    List<UserRef>? assignedUsers,
   }) =>
       InventoryItem(
         id: id ?? this.id,
@@ -136,5 +171,8 @@ class InventoryItem {
         imageUrl: imageUrl ?? this.imageUrl,
         registeredAt: registeredAt ?? this.registeredAt,
         inReviewAt: inReviewAt ?? this.inReviewAt,
+        isPersonal: isPersonal ?? this.isPersonal,
+        responsibleUser: responsibleUser ?? this.responsibleUser,
+        assignedUsers: assignedUsers ?? this.assignedUsers,
       );
 }

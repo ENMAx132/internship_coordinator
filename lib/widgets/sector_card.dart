@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/space.dart';
 import 'icono_widget.dart';
+import 'inventory_badge.dart';
 
 class SectorCard extends StatelessWidget {
   final Space space;
@@ -101,6 +102,13 @@ class SectorCard extends StatelessWidget {
                     color: Color(0xFF94A3B8),
                   ),
                 ),
+                if (space.isPersonal || space.isAssigned) ...[
+                  const SizedBox(height: 6),
+                  if (space.isPersonal)
+                    InventoryBadge.personal()
+                  else
+                    InventoryBadge.assigned(),
+                ],
               ],
             ),
           ],

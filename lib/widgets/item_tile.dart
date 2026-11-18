@@ -70,7 +70,10 @@ class ItemTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${item.code} • ${space.name} • ${item.responsible}',
+                    '${item.code} • ${space.name} • '
+                    '${item.displayResponsible}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF64748B),

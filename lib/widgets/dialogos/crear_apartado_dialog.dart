@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/drafts.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class CrearApartadoDialog extends StatefulWidget {
   final ValueChanged<SectionDraft> onCrear;
   final List<String> emojis;
+  final List<Account> accounts;
+  final bool canAssignUsers;
+  final bool personalInventory;
 
   const CrearApartadoDialog({
     super.key,
     required this.onCrear,
     this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
+    this.accounts = const [],
+    this.canAssignUsers = false,
+    this.personalInventory = false,
   });
 
   @override
@@ -25,17 +33,18 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
   bool _emojisVisibles = false;
   bool _nombreInvalido = false;
 
-  List<String> get _emojis => widget.emojis.isEmpty
-      ? const ['🏢', '💻', '📊', '📦']
-      : widget.emojis;
+  List<String> get _emojis =>
+      widget.emojis.isEmpty ? const ['🏢', '💻', '📊', '📦'] : widget.emojis;
 
   int _paso = 0;
+  final Set<int> _assignedIds = {};
 
-  static const List<String> _ayudas = [
-    'Elige un ícono para el apartado',
-    '¿Cómo se llama el apartado?',
-    'Descripción breve (opcional)',
-  ];
+  List<String> get _ayudas => [
+        'Elige un ícono para el apartado',
+        '¿Cómo se llama el apartado?',
+        'Descripción breve (opcional)',
+        if (widget.canAssignUsers) 'Usuarios asignados (opcional)',
+      ];
 
   int get _totalPasos => _ayudas.length;
 
@@ -87,8 +96,11 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
       case 1:
         nombreCtrl.clear();
         break;
-      default:
+      case 2:
         descCtrl.clear();
+        break;
+      default:
+        _assignedIds.clear();
         break;
     }
   }
@@ -104,6 +116,7 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
             ? 'Nuevo apartado'
             : descCtrl.text.trim(),
         localImagePath: localImagePath,
+        assignedUserIds: _assignedIds.toList(),
       ),
     );
     Navigator.pop(context);
@@ -125,6 +138,24 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.personalInventory) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Este apartado se creará en tu inventario personal.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF4338CA),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -240,12 +271,25 @@ class _CrearApartadoDialogState extends State<CrearApartadoDialog> {
           ),
           onSubmitted: (_) => _avanzar(),
         );
-      default:
+      case 2:
         return TextField(
           controller: descCtrl,
           textCapitalization: TextCapitalization.sentences,
           decoration: const InputDecoration(labelText: 'Descripción breve'),
           onSubmitted: (_) => _avanzar(),
+        );
+      default:
+        if (!widget.canAssignUsers) {
+          return const SizedBox.shrink();
+        }
+        return UsuariosAsignadosSelector(
+          accounts: widget.accounts,
+          selectedIds: _assignedIds,
+          onChanged: (ids) => setState(() {
+            _assignedIds
+              ..clear()
+              ..addAll(ids);
+          }),
         );
     }
   }

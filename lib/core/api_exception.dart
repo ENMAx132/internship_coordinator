@@ -85,6 +85,12 @@ String messageForApiError(ApiException error) {
       return 'La imagen ya no existe.';
     case 'EI008':
       return 'Debes enviar todos los apartados al reordenar.';
+    case 'EI009':
+      return 'Este registro no es tuyo o es del inventario compartido.';
+    case 'EI010':
+      return 'Solo un administrador puede asignar usuarios o responsables.';
+    case 'EI011':
+      return 'El espacio padre debe ser del mismo apartado y no crear ciclos.';
     case 'EA001':
       return 'Correo o contraseña incorrectos.';
   }

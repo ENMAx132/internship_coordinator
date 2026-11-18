@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/api_exception.dart';
 import '../core/session.dart';
+import '../models/account.dart';
 import '../models/catalog.dart';
 import '../models/drafts.dart';
 import '../models/inventory_item.dart';
@@ -46,6 +47,11 @@ class InventoryStore extends ChangeNotifier {
   List<InventoryItem> items = [];
   List<Review> reviews = [];
   InventoryMetrics metrics = InventoryMetrics.empty;
+  List<Account> accounts = [];
+
+  /// Filtros de propiedad/visibilidad (solo ADMIN y SUPERVISOR).
+  String? ownershipFilter;
+  int? userFilterId;
 
   bool loading = false;
   bool initialized = false;
@@ -61,6 +67,52 @@ class InventoryStore extends ChangeNotifier {
 
   bool get canRead => session.user.canAccessInventory;
   bool get canWrite => session.user.canWrite;
+  bool get canManageAssignments => session.user.canManageAssignments;
+  bool get canViewAll => session.user.canViewAll;
+  bool get showHistory => session.user.canViewHistory;
+  bool get canReorderSections => session.user.canReorderSections;
+
+  Account? accountById(int id) {
+    for (final account in accounts) {
+      if (account.id == id) return account;
+    }
+    return null;
+  }
+
+  /// ADMIN: todo. USER: solo su inventario personal. SUPERVISOR: nada.
+  bool canEditSection(Section section) {
+    if (session.user.isAdmin) return true;
+    if (session.user.isCollaborator) {
+      return section.isPersonal && section.owner?.id == session.user.id;
+    }
+    return false;
+  }
+
+  bool canEditSpace(Space space) {
+    if (session.user.isAdmin) return true;
+    if (session.user.isCollaborator) {
+      final section = sectionById(space.sectionId);
+      return section != null && canEditSection(section);
+    }
+    return false;
+  }
+
+  bool canEditItem(InventoryItem item) {
+    if (session.user.isAdmin) return true;
+    if (session.user.isCollaborator) {
+      final section = sectionById(item.sectionId);
+      if (section != null) return canEditSection(section);
+      final space = spaceById(item.spaceId);
+      return space != null && canEditSpace(space);
+    }
+    return false;
+  }
+
+  /// Apartados donde el usuario puede crear o mover registros.
+  List<Section> get editableSections => sections.where(canEditSection).toList();
+
+  /// Espacios donde el usuario puede crear o mover objetos.
+  List<Space> get editableSpaces => spaces.where(canEditSpace).toList();
 
   /// Todos los espacios del apartado, incluidos los subespacios.
   List<Space> spacesForSection(int sectionId) =>
@@ -91,8 +143,7 @@ class InventoryStore extends ChangeNotifier {
     return items.where((item) => ids.contains(item.spaceId)).toList();
   }
 
-  String spacePath(int spaceId) =>
-      spaceById(spaceId)?.pathLabel(spaces) ?? '';
+  String spacePath(int spaceId) => spaceById(spaceId)?.pathLabel(spaces) ?? '';
 
   List<InventoryItem> get itemsInReview =>
       items.where((item) => item.isInReview).toList();
@@ -167,7 +218,7 @@ class InventoryStore extends ChangeNotifier {
       lastError = null;
       hasData = true;
 
-      if (session.user.canWrite) {
+      if (session.user.isAdmin) {
         try {
           final migrated = await LegacyMigrator(
             repository: repository,
@@ -278,9 +329,7 @@ class InventoryStore extends ChangeNotifier {
 
     if (offline) return TutorialFinishResult.pending;
     final synced = await syncPendingTutorial();
-    return synced
-        ? TutorialFinishResult.synced
-        : TutorialFinishResult.pending;
+    return synced ? TutorialFinishResult.synced : TutorialFinishResult.pending;
   }
 
   Future<bool> syncPendingTutorial() async {
@@ -380,12 +429,20 @@ class InventoryStore extends ChangeNotifier {
   Future<void> _loadFromApi() async {
     catalogs = await repository.getCatalogs();
     settings = await repository.getSettings();
-    sections = await repository.fetchSections();
+    await _loadAccounts();
+    sections = await repository.fetchSections(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
 
     final spacesLists = await Future.wait(
       sections.map((section) async {
         try {
-          return await repository.fetchSpaces(section.id);
+          return await repository.fetchSpaces(
+            section.id,
+            userId: userFilterId,
+            ownership: ownershipFilter,
+          );
         } on ApiException catch (error) {
           if (error.isNotFound) return <Space>[];
           rethrow;
@@ -393,21 +450,90 @@ class InventoryStore extends ChangeNotifier {
       }),
     );
     spaces = spacesLists.expand((list) => list).toList();
-    items = await repository.fetchItems();
-    reviews = await repository.fetchReviews();
-    metrics = await repository.getMetrics();
+    items = await repository.fetchItems(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
+    reviews = showHistory ? await repository.fetchReviews() : [];
+    metrics = await repository.getMetrics(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
     await _saveCache();
   }
 
+  /// Las cuentas solo están disponibles para ADMIN y SUPERVISOR.
+  Future<void> _loadAccounts() async {
+    if (!session.user.canViewAll) {
+      accounts = [];
+      return;
+    }
+    try {
+      accounts = await repository.fetchAccounts();
+    } catch (_) {
+      // La lista de cuentas es auxiliar; no debe impedir cargar el inventario.
+    }
+  }
+
+  Future<void> setOwnershipFilter(String? ownership) async {
+    if (!canViewAll) return;
+    ownershipFilter = ownership;
+    if (ownership != null) userFilterId = null;
+    await _reloadWithFilters();
+  }
+
+  Future<void> setUserFilter(int? userId) async {
+    if (!canViewAll) return;
+    userFilterId = userId;
+    if (userId != null) ownershipFilter = null;
+    await _reloadWithFilters();
+  }
+
+  Future<void> clearFilters() async {
+    if (!canViewAll) return;
+    ownershipFilter = null;
+    userFilterId = null;
+    await _reloadWithFilters();
+  }
+
+  Future<void> _reloadWithFilters() async {
+    loading = true;
+    loadingMessage = 'Aplicando filtro…';
+    notifyListeners();
+    try {
+      await _loadFromApi();
+      offline = false;
+      lastError = null;
+    } on ApiException catch (error) {
+      lastError = messageForApiError(error);
+      if (error.isUnauthorized) onUnauthorized?.call();
+    } catch (_) {
+      lastError = 'No se pudo aplicar el filtro.';
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> refreshSections() async {
-    sections = await repository.fetchSections();
-    metrics = await repository.getMetrics();
+    sections = await repository.fetchSections(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
+    metrics = await repository.getMetrics(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
     await _saveCache();
     notifyListeners();
   }
 
   Future<void> refreshSpacesForSection(int sectionId) async {
-    final updated = await repository.fetchSpaces(sectionId);
+    final updated = await repository.fetchSpaces(
+      sectionId,
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
     spaces = [
       ...spaces.where((space) => space.sectionId != sectionId),
       ...updated,
@@ -417,20 +543,34 @@ class InventoryStore extends ChangeNotifier {
   }
 
   Future<void> refreshItems() async {
-    items = await repository.fetchItems();
-    metrics = await repository.getMetrics();
+    items = await repository.fetchItems(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
+    metrics = await repository.getMetrics(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
     await _saveCache();
     notifyListeners();
   }
 
   Future<void> refreshReviews() async {
+    if (!showHistory) {
+      reviews = [];
+      notifyListeners();
+      return;
+    }
     reviews = await repository.fetchReviews();
     await _saveCache();
     notifyListeners();
   }
 
   Future<void> refreshMetrics() async {
-    metrics = await repository.getMetrics();
+    metrics = await repository.getMetrics(
+      userId: userFilterId,
+      ownership: ownershipFilter,
+    );
     await _saveCache();
     notifyListeners();
   }
@@ -461,6 +601,7 @@ class InventoryStore extends ChangeNotifier {
       description: draft.description,
       icon: draft.icon,
       imageUrl: imageUrl,
+      assignedUserIds: canManageAssignments ? draft.assignedUserIds : const [],
     );
     await refreshSections();
     return created;
@@ -473,6 +614,7 @@ class InventoryStore extends ChangeNotifier {
       'description': draft.description,
       'icon': draft.icon,
       'image_url': imageUrl,
+      if (canManageAssignments) 'assigned_user_ids': draft.assignedUserIds,
     });
     await refreshSections();
   }
@@ -485,9 +627,7 @@ class InventoryStore extends ChangeNotifier {
         .map((space) => space.id)
         .toSet();
     spaces = spaces.where((space) => space.sectionId != id).toList();
-    items = items
-        .where((item) => !spaceIds.contains(item.spaceId))
-        .toList();
+    items = items.where((item) => !spaceIds.contains(item.spaceId)).toList();
     await _saveCache();
     await refreshSections();
     await refreshReviews();
@@ -522,6 +662,7 @@ class InventoryStore extends ChangeNotifier {
       emoji: draft.emoji,
       parentSpaceId: draft.parentSpaceId,
       imageUrl: imageUrl,
+      assignedUserIds: canManageAssignments ? draft.assignedUserIds : const [],
     );
     await refreshSpacesForSection(draft.sectionId);
     await refreshSections();
@@ -531,8 +672,8 @@ class InventoryStore extends ChangeNotifier {
   Future<void> updateSpace(int id, SpaceDraft draft) async {
     final actual = spaceById(id);
     final previousSectionId = actual?.sectionId;
-    final parentChanged = actual == null ||
-        actual.parentSpaceId != draft.parentSpaceId;
+    final parentChanged =
+        actual == null || actual.parentSpaceId != draft.parentSpaceId;
     _validarEspacioPadre(
       spaceId: id,
       sectionId: draft.sectionId,
@@ -546,6 +687,7 @@ class InventoryStore extends ChangeNotifier {
       'emoji': draft.emoji,
       if (parentChanged) 'parent_space_id': draft.parentSpaceId,
       'image_url': imageUrl,
+      if (canManageAssignments) 'assigned_user_ids': draft.assignedUserIds,
     });
     await refreshSpacesForSection(draft.sectionId);
     if (previousSectionId != null && previousSectionId != draft.sectionId) {
@@ -612,8 +754,10 @@ class InventoryStore extends ChangeNotifier {
       status: draft.statusCode,
       value: draft.value,
       responsible: draft.responsible,
+      responsibleUserId: canManageAssignments ? draft.responsibleUserId : null,
       brand: draft.brand,
       imageUrl: imageUrl,
+      assignedUserIds: canManageAssignments ? draft.assignedUserIds : const [],
     );
     await refreshItems();
     final space = spaceById(draft.spaceId);
@@ -641,6 +785,10 @@ class InventoryStore extends ChangeNotifier {
       if (changes.brand != null) 'brand': changes.brand,
       if (imageUrl != null) 'image_url': imageUrl,
       if (changes.exitReason != null) 'exit_reason': changes.exitReason,
+      if (canManageAssignments && changes.assignedUserIds != null)
+        'assigned_user_ids': changes.assignedUserIds,
+      if (canManageAssignments && changes.updateResponsible)
+        'responsible_user_id': changes.responsibleUserId,
     });
     await refreshItems();
     await refreshReviews();
@@ -719,6 +867,7 @@ class InventoryStore extends ChangeNotifier {
     items = snapshot.items;
     reviews = snapshot.reviews;
     metrics = snapshot.metrics;
+    accounts = snapshot.accounts;
   }
 
   void handleError(Object error) {
@@ -745,6 +894,7 @@ class InventoryStore extends ChangeNotifier {
       items: items,
       reviews: reviews,
       metrics: metrics,
+      accounts: accounts,
     );
   }
 

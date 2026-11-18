@@ -15,8 +15,24 @@ class SessionUser {
   final String email;
   final String role;
 
-  bool get canAccessInventory => role == 'ADMIN' || role == 'SUPERVISOR';
-  bool get canWrite => role == 'ADMIN';
+  bool get isAdmin => role == 'ADMIN';
+  bool get isSupervisor => role == 'SUPERVISOR';
+  bool get isCollaborator => role == 'USER';
+
+  /// Roles con acceso al módulo de inventario (`SHOWQR` queda fuera).
+  bool get canAccessInventory => isAdmin || isSupervisor || isCollaborator;
+
+  /// Solo ADMIN y USER pueden crear/editar; SUPERVISOR es de solo lectura.
+  bool get canWrite => isAdmin || isCollaborator;
+
+  /// ADMIN y SUPERVISOR ven todo el inventario y el historial.
+  bool get canViewAll => isAdmin || isSupervisor;
+
+  bool get canViewHistory => canViewAll;
+
+  bool get canManageAssignments => isAdmin;
+
+  bool get canReorderSections => isAdmin;
 
   factory SessionUser.fromJson(Map<String, dynamic> json) => SessionUser(
         id: (json['id'] as num).toInt(),

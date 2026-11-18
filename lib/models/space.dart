@@ -1,3 +1,5 @@
+import 'account.dart';
+
 class Space {
   const Space({
     required this.id,
@@ -10,6 +12,10 @@ class Space {
     this.itemCount,
     this.sectionName,
     this.sectionIcon,
+    this.subspaceCount,
+    this.totalItemCount,
+    this.isPersonal = false,
+    this.assignedUsers = const [],
   });
 
   final int id;
@@ -23,7 +29,18 @@ class Space {
   final String? sectionName;
   final String? sectionIcon;
 
+  /// Número de subespacios directos informado por la API.
+  final int? subspaceCount;
+
+  /// Objetos del espacio y de todos sus subespacios, según la API.
+  final int? totalItemCount;
+
+  final bool isPersonal;
+  final List<UserRef> assignedUsers;
+
   bool get isRoot => parentSpaceId == null;
+
+  bool get isAssigned => !isPersonal && assignedUsers.isNotEmpty;
 
   factory Space.fromJson(Map<String, dynamic> json) {
     final section = json['section'];
@@ -35,6 +52,7 @@ class Space {
             json['parentSpaceId'] ??
             parentMap?['id']) as num?)
         ?.toInt();
+    final assigned = json['assigned_users'];
     return Space(
       id: (json['id'] as num).toInt(),
       sectionId: (json['section_id'] as num).toInt(),
@@ -46,6 +64,15 @@ class Space {
       itemCount: (json['item_count'] as num?)?.toInt(),
       sectionName: sectionMap?['name'] as String?,
       sectionIcon: sectionMap?['icon'] as String?,
+      subspaceCount: (json['subspace_count'] as num?)?.toInt(),
+      totalItemCount: (json['total_item_count'] as num?)?.toInt(),
+      isPersonal: json['is_personal'] as bool? ?? false,
+      assignedUsers: assigned is List
+          ? assigned
+              .whereType<Map>()
+              .map((e) => UserRef.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : const [],
     );
   }
 
@@ -58,6 +85,10 @@ class Space {
         'parent_space_id': parentSpaceId,
         'image_url': imageUrl,
         'item_count': itemCount,
+        'subspace_count': subspaceCount,
+        'total_item_count': totalItemCount,
+        'is_personal': isPersonal,
+        'assigned_users': assignedUsers.map((e) => e.toJson()).toList(),
         if (sectionName != null || sectionIcon != null)
           'section': {
             'id': sectionId,
@@ -78,6 +109,10 @@ class Space {
     int? itemCount,
     String? sectionName,
     String? sectionIcon,
+    int? subspaceCount,
+    int? totalItemCount,
+    bool? isPersonal,
+    List<UserRef>? assignedUsers,
   }) =>
       Space(
         id: id ?? this.id,
@@ -91,6 +126,10 @@ class Space {
         itemCount: itemCount ?? this.itemCount,
         sectionName: sectionName ?? this.sectionName,
         sectionIcon: sectionIcon ?? this.sectionIcon,
+        subspaceCount: subspaceCount ?? this.subspaceCount,
+        totalItemCount: totalItemCount ?? this.totalItemCount,
+        isPersonal: isPersonal ?? this.isPersonal,
+        assignedUsers: assignedUsers ?? this.assignedUsers,
       );
 
   Space? parentIn(List<Space> allSpaces) {
