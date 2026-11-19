@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/section.dart';
 import 'icono_widget.dart';
+import 'inventory_badge.dart';
 
 class ApartadoCard extends StatelessWidget {
   final Section section;
@@ -55,6 +56,12 @@ class ApartadoCard extends StatelessWidget {
                       fontSize: 24,
                     ),
                   ),
+                  const Spacer(),
+                  if (section.isPersonal)
+                    InventoryBadge.personal()
+                  else if (section.isAssigned)
+                    InventoryBadge.assigned(),
+                  const SizedBox(width: 5),
                   const Icon(
                     Icons.arrow_forward_ios,
                     size: 14,

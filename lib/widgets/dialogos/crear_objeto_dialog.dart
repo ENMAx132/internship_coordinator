@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/catalog.dart';
 import '../../models/drafts.dart';
 import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class CrearObjetoDialog extends StatefulWidget {
   final List<Space> spaces;
   final Catalogs catalogs;
   final String placaInicial;
   final ValueChanged<ItemDraft> onGuardar;
+  final List<Account> accounts;
+  final bool canAssignUsers;
+  final bool canPickResponsible;
+  final int? currentUserId;
+  final String? currentUserName;
 
   const CrearObjetoDialog({
     super.key,
@@ -17,6 +24,11 @@ class CrearObjetoDialog extends StatefulWidget {
     required this.catalogs,
     required this.placaInicial,
     required this.onGuardar,
+    this.accounts = const [],
+    this.canAssignUsers = false,
+    this.canPickResponsible = false,
+    this.currentUserId,
+    this.currentUserName,
   });
 
   @override
@@ -32,6 +44,8 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
   late int spaceIdSelec;
   late String categoryCodeSelec;
   late String statusCodeSelec;
+  int? responsibleUserIdSelec;
+  final Set<int> _assignedIds = {};
   String? localImagePath;
   bool _nombreInvalido = false;
   bool _valorInvalido = false;
@@ -48,7 +62,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
 
   int _paso = 0;
 
-  static const List<String> _ayudas = [
+  static const List<String> _ayudasBase = [
     'Agrega una foto para el objeto (opcional)',
     '¿Cómo se llama el objeto?',
     'Identificador o placa del activo',
@@ -60,6 +74,11 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     'Dónde se encuentra el objeto',
   ];
 
+  List<String> get _ayudas => [
+        ..._ayudasBase,
+        if (widget.canAssignUsers) 'Usuarios asignados (opcional)',
+      ];
+
   int get _totalPasos => _ayudas.length;
 
   bool get _esUltimoPaso => _paso == _totalPasos - 1;
@@ -70,11 +89,16 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
     nombreCtrl = TextEditingController();
     placaCtrl = TextEditingController(text: widget.placaInicial);
     marcaCtrl = TextEditingController();
-    respCtrl = TextEditingController();
+    respCtrl = TextEditingController(
+      text: widget.canPickResponsible ? '' : widget.currentUserName ?? '',
+    );
     valorCtrl = TextEditingController(text: '0');
     spaceIdSelec = widget.spaces.isNotEmpty ? widget.spaces.first.id : 0;
     categoryCodeSelec = _categories.first.code;
     statusCodeSelec = _statuses.first.code;
+    if (!widget.canPickResponsible) {
+      responsibleUserIdSelec = widget.currentUserId;
+    }
   }
 
   @override
@@ -140,6 +164,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         break;
       case 4:
         respCtrl.clear();
+        if (widget.canPickResponsible) responsibleUserIdSelec = null;
         break;
       case 5:
         valorCtrl.clear();
@@ -150,10 +175,13 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
       case 7:
         statusCodeSelec = _statuses.first.code;
         break;
-      default:
+      case 8:
         if (widget.spaces.isNotEmpty) {
           spaceIdSelec = widget.spaces.first.id;
         }
+        break;
+      default:
+        _assignedIds.clear();
         break;
     }
   }
@@ -172,7 +200,10 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
         responsible:
             respCtrl.text.trim().isEmpty ? 'Sin asignar' : respCtrl.text.trim(),
         brand: marcaCtrl.text.trim(),
+        responsibleUserId:
+            widget.canPickResponsible ? responsibleUserIdSelec : null,
         localImagePath: localImagePath,
+        assignedUserIds: _assignedIds.toList(),
       ),
     );
     Navigator.pop(context);
@@ -318,11 +349,23 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           onSubmitted: (_) => _avanzar(),
         );
       case 4:
-        return TextField(
-          controller: respCtrl,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(labelText: 'Responsable'),
-          onSubmitted: (_) => _avanzar(),
+        return ResponsableUsuarioSelector(
+          accounts: widget.accounts,
+          selectedId: responsibleUserIdSelec,
+          enabled: widget.canPickResponsible,
+          lockedName: widget.currentUserName,
+          onChanged: (id) {
+            setState(() {
+              responsibleUserIdSelec = id;
+              final matches =
+                  widget.accounts.where((item) => item.id == id).toList();
+              if (matches.isNotEmpty) {
+                respCtrl.text = matches.first.name;
+              } else if (id == null) {
+                respCtrl.clear();
+              }
+            });
+          },
         );
       case 5:
         return TextField(
@@ -369,7 +412,7 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
             if (val != null) setState(() => statusCodeSelec = val);
           },
         );
-      default:
+      case 8:
         return DropdownButtonFormField<int>(
           initialValue: spaceIdSelec,
           decoration: const InputDecoration(labelText: 'Espacio / Sala'),
@@ -385,6 +428,17 @@ class _CrearObjetoDialogState extends State<CrearObjetoDialog> {
           onChanged: (val) {
             if (val != null) setState(() => spaceIdSelec = val);
           },
+        );
+      default:
+        if (!widget.canAssignUsers) return const SizedBox.shrink();
+        return UsuariosAsignadosSelector(
+          accounts: widget.accounts,
+          selectedIds: _assignedIds,
+          onChanged: (ids) => setState(() {
+            _assignedIds
+              ..clear()
+              ..addAll(ids);
+          }),
         );
     }
   }

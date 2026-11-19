@@ -31,8 +31,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
     final positions = <int, int>{
       for (var i = 0; i < _order.length; i++) _order[i]: i,
     };
-    final lista = [...items]
-      ..sort((a, b) {
+    final lista = [...items]..sort((a, b) {
         final posA = positions[a.id] ?? 1 << 30;
         final posB = positions[b.id] ?? 1 << 30;
         return posA.compareTo(posB);
@@ -75,7 +74,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
 
   Future<void> _editarEstado(InventoryItem item) async {
     final store = _store;
-    if (!store.canWrite || store.offline) return;
+    if (!store.canEditItem(item) || store.offline) return;
     final seleccionado = await showDialog<CatalogEntry>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -94,9 +93,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
-                  activo
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
+                  activo ? Icons.radio_button_checked : Icons.radio_button_off,
                   color: activo
                       ? const Color(0xFF6366F1)
                       : const Color(0xFF94A3B8),
@@ -258,9 +255,10 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
   ) {
     final space = store.spaceById(item.spaceId);
     final prioridad = index + 1;
+    final puedeEditar = canWrite && store.canEditItem(item);
     return GestureDetector(
       key: ValueKey(item.id),
-      onLongPress: canWrite ? () => _editarEstado(item) : null,
+      onLongPress: puedeEditar ? () => _editarEstado(item) : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -338,9 +336,7 @@ class _VerRevisionScreenState extends State<VerRevisionScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    space != null
-                        ? store.spacePath(space.id)
-                        : item.spaceName,
+                    space != null ? store.spacePath(space.id) : item.spaceName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

@@ -68,6 +68,11 @@ class _EspacioScreenState extends State<EspacioScreen> {
         spaces: [_space],
         catalogs: store.catalogs,
         placaInicial: placa,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
+        canPickResponsible: store.session.user.isAdmin,
+        currentUserId: store.session.user.id,
+        currentUserName: store.session.user.name,
         onGuardar: (draft) {
           _run(
             () => store.createItem(draft),
@@ -90,6 +95,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
         initialSectionId: _space.sectionId,
         initialParentSpaceId: _space.id,
         title: 'Nuevo subespacio',
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onCrear: (draft) {
           _run(
             () => store.createSpace(draft),
@@ -106,9 +113,13 @@ class _EspacioScreenState extends State<EspacioScreen> {
       context: context,
       builder: (ctx) => EditarEspacioDialog(
         space: space,
-        sections: store.sections,
+        sections: store.session.user.isAdmin
+            ? store.sections
+            : store.editableSections,
         spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onActualizar: (draft) {
           _run(
             () => store.updateSpace(space.id, draft),
@@ -163,6 +174,9 @@ class _EspacioScreenState extends State<EspacioScreen> {
         item: item,
         spaces: store.spacesForSection(_space.sectionId),
         catalogs: store.catalogs,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
+        canPickResponsible: store.session.user.isAdmin,
         onActualizar: (changes) {
           _run(
             () => store.updateItem(item.id, changes),
@@ -182,8 +196,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
   @override
   Widget build(BuildContext context) {
     final store = _store;
-    final canWrite = store.canWrite && !store.offline;
     final space = _space;
+    final canEdit = store.canEditSpace(space) && !store.offline;
     final parent = space.parentIn(store.spaces);
     final subspaces = store.subspacesOf(space.id);
     final items = store.itemsForSpace(space.id);
@@ -223,7 +237,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
           ],
         ),
         actions: [
-          if (canWrite) ...[
+          if (canEdit) ...[
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: Color(0xFF6366F1)),
               tooltip: 'Editar espacio',
@@ -286,14 +300,13 @@ class _EspacioScreenState extends State<EspacioScreen> {
             ),
             const SizedBox(height: 10),
             if (subspaces.isEmpty)
-              _construirSubespaciosVacio(canWrite)
+              _construirSubespaciosVacio(canEdit)
             else
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: EdgeInsets.zero,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
@@ -308,9 +321,8 @@ class _EspacioScreenState extends State<EspacioScreen> {
                     subspaces: store.subspacesOf(sub.id).length,
                     isSelected: false,
                     onTap: () => _abrirSubespacio(sub),
-                    onLongPress: canWrite
-                        ? () => _dialogoEditarEspacio(sub)
-                        : () {},
+                    onLongPress:
+                        canEdit ? () => _dialogoEditarEspacio(sub) : () {},
                   );
                 },
               ),
@@ -338,13 +350,13 @@ class _EspacioScreenState extends State<EspacioScreen> {
             ),
             const SizedBox(height: 10),
             if (items.isEmpty)
-              _construirListaVacia(canWrite)
+              _construirListaVacia(canEdit)
             else
               for (final item in items)
                 ItemTile(
                   item: item,
                   space: space,
-                  canWrite: canWrite,
+                  canWrite: store.canEditItem(item) && !store.offline,
                   onTransferir: () => _dialogoTransferir(item),
                   onLongPress: () => _dialogoEditarObjeto(item),
                 ),
@@ -463,7 +475,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
     );
   }
 
-  Widget _construirSubespaciosVacio(bool canWrite) {
+  Widget _construirSubespaciosVacio(bool canEdit) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -482,7 +494,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (canWrite) ...[
+          if (canEdit) ...[
             const SizedBox(height: 12),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -499,7 +511,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
     );
   }
 
-  Widget _construirListaVacia(bool canWrite) {
+  Widget _construirListaVacia(bool canEdit) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -518,7 +530,7 @@ class _EspacioScreenState extends State<EspacioScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (canWrite) ...[
+          if (canEdit) ...[
             const SizedBox(height: 12),
             ElevatedButton(
               style: ElevatedButton.styleFrom(

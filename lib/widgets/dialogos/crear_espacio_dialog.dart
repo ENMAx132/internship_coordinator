@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/drafts.dart';
 import '../../models/section.dart';
 import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class CrearEspacioDialog extends StatefulWidget {
   final ValueChanged<SpaceDraft> onCrear;
@@ -13,6 +15,8 @@ class CrearEspacioDialog extends StatefulWidget {
   final int? initialSectionId;
   final int? initialParentSpaceId;
   final String title;
+  final List<Account> accounts;
+  final bool canAssignUsers;
 
   const CrearEspacioDialog({
     super.key,
@@ -23,6 +27,8 @@ class CrearEspacioDialog extends StatefulWidget {
     this.initialSectionId,
     this.initialParentSpaceId,
     this.title = 'Nuevo Espacio',
+    this.accounts = const [],
+    this.canAssignUsers = false,
   });
 
   @override
@@ -38,10 +44,10 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
   bool _nombreInvalido = false;
   late int sectionIdSelec;
   int parentSpaceIdSelec = 0;
+  final Set<int> _assignedIds = {};
 
-  List<String> get _emojis => widget.emojis.isEmpty
-      ? const ['🏢', '💻', '📊', '📦']
-      : widget.emojis;
+  List<String> get _emojis =>
+      widget.emojis.isEmpty ? const ['🏢', '💻', '📊', '📦'] : widget.emojis;
 
   List<Space> get _parentOptions {
     final options = widget.spaces
@@ -57,13 +63,18 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
 
   int _paso = 0;
 
-  static const List<String> _ayudas = [
+  static const List<String> _ayudasBase = [
     'Elige un ícono para el espacio',
     '¿Cómo se llama el espacio?',
     'Descripción breve (opcional)',
     '¿A qué apartado pertenece?',
     '¿Dentro de qué espacio estará? (opcional)',
   ];
+
+  List<String> get _ayudas => [
+        ..._ayudasBase,
+        if (widget.canAssignUsers) 'Usuarios asignados (opcional)',
+      ];
 
   int get _totalPasos => _ayudas.length;
 
@@ -131,8 +142,11 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             (widget.sections.isNotEmpty ? widget.sections.first.id : 0);
         parentSpaceIdSelec = 0;
         break;
-      default:
+      case 4:
         parentSpaceIdSelec = 0;
+        break;
+      default:
+        _assignedIds.clear();
         break;
     }
   }
@@ -148,9 +162,9 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             ? 'Área de trabajo'
             : descCtrl.text.trim(),
         emoji: emojiSelec,
-        parentSpaceId:
-            parentSpaceIdSelec == 0 ? null : parentSpaceIdSelec,
+        parentSpaceId: parentSpaceIdSelec == 0 ? null : parentSpaceIdSelec,
         localImagePath: localImagePath,
+        assignedUserIds: _assignedIds.toList(),
       ),
     );
     Navigator.pop(context);
@@ -318,7 +332,7 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
             }
           },
         );
-      default:
+      case 4:
         final options = _parentOptions;
         final valor = options.any((space) => space.id == parentSpaceIdSelec)
             ? parentSpaceIdSelec
@@ -348,6 +362,17 @@ class _CrearEspacioDialogState extends State<CrearEspacioDialog> {
           onChanged: (val) {
             if (val != null) setState(() => parentSpaceIdSelec = val);
           },
+        );
+      default:
+        if (!widget.canAssignUsers) return const SizedBox.shrink();
+        return UsuariosAsignadosSelector(
+          accounts: widget.accounts,
+          selectedIds: _assignedIds,
+          onChanged: (ids) => setState(() {
+            _assignedIds
+              ..clear()
+              ..addAll(ids);
+          }),
         );
     }
   }

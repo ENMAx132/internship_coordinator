@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/catalog.dart';
 import '../../models/drafts.dart';
 import '../../models/inventory_item.dart';
 import '../../models/space.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class EditarObjetoDialog extends StatefulWidget {
   final InventoryItem item;
@@ -12,6 +14,9 @@ class EditarObjetoDialog extends StatefulWidget {
   final Catalogs catalogs;
   final ValueChanged<ItemChanges> onActualizar;
   final VoidCallback onEliminar;
+  final List<Account> accounts;
+  final bool canAssignUsers;
+  final bool canPickResponsible;
 
   const EditarObjetoDialog({
     super.key,
@@ -20,6 +25,9 @@ class EditarObjetoDialog extends StatefulWidget {
     required this.catalogs,
     required this.onActualizar,
     required this.onEliminar,
+    this.accounts = const [],
+    this.canAssignUsers = false,
+    this.canPickResponsible = false,
   });
 
   @override
@@ -35,6 +43,8 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
   late int spaceIdSelec;
   late String categoryCodeSelec;
   late String statusCodeSelec;
+  int? _responsibleUserIdSelec;
+  late Set<int> _assignedIds;
   String? localImagePath;
   bool _nombreInvalido = false;
   bool _placaInvalida = false;
@@ -51,6 +61,8 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     spaceIdSelec = widget.item.spaceId;
     categoryCodeSelec = widget.item.category.code;
     statusCodeSelec = widget.item.status.code;
+    _responsibleUserIdSelec = widget.item.responsibleUser?.id;
+    _assignedIds = widget.item.assignedUsers.map((user) => user.id).toSet();
   }
 
   @override
@@ -74,6 +86,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
     final nombreInvalido = nombre.isEmpty;
     final placaInvalida = placa.isEmpty;
     final valorInvalido = valor == null || valor < 0;
+    final responsableTexto = respCtrl.text.trim();
 
     setState(() {
       _nombreInvalido = nombreInvalido;
@@ -90,14 +103,17 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
         categoryCode: categoryCodeSelec,
         statusCode: statusCodeSelec,
         value: valor,
-        responsible: respCtrl.text.trim().isEmpty
-            ? widget.item.responsible
-            : respCtrl.text.trim(),
+        responsible: widget.canPickResponsible
+            ? (responsableTexto.isEmpty ? 'Sin asignar' : responsableTexto)
+            : widget.item.responsible,
         brand: marcaCtrl.text.trim().isEmpty
             ? widget.item.brand
             : marcaCtrl.text.trim(),
         imageUrl: widget.item.imageUrl,
         localImagePath: localImagePath,
+        assignedUserIds: widget.canAssignUsers ? _assignedIds.toList() : null,
+        responsibleUserId: _responsibleUserIdSelec,
+        updateResponsible: widget.canPickResponsible,
       ),
     );
     Navigator.pop(context);
@@ -143,8 +159,7 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
       widget.item.category.code: widget.item.category.name,
     };
     final estados = <String, String>{
-      for (final status in widget.catalogs.statuses)
-        status.code: status.name,
+      for (final status in widget.catalogs.statuses) status.code: status.name,
       widget.item.status.code: widget.item.status.name,
     };
 
@@ -160,9 +175,8 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SelectorImagenIcono(
-              emoji: widget.spaces.isNotEmpty
-                  ? widget.spaces.first.emoji
-                  : '📦',
+              emoji:
+                  widget.spaces.isNotEmpty ? widget.spaces.first.emoji : '📦',
               imageUrl: widget.item.imageUrl,
               localImagePath: localImagePath,
               onImagePicked: (p) => setState(() => localImagePath = p),
@@ -196,9 +210,26 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
               controller: marcaCtrl,
               decoration: const InputDecoration(labelText: 'Marca'),
             ),
-            TextField(
-              controller: respCtrl,
-              decoration: const InputDecoration(labelText: 'Responsable'),
+            const SizedBox(height: 10),
+            ResponsableUsuarioSelector(
+              accounts: widget.accounts,
+              selectedId: _responsibleUserIdSelec,
+              fallbackName: widget.item.responsible,
+              enabled: widget.canPickResponsible,
+              lockedName: widget.item.displayResponsible,
+              onChanged: (id) {
+                if (!widget.canPickResponsible) return;
+                setState(() {
+                  _responsibleUserIdSelec = id;
+                  final matches =
+                      widget.accounts.where((item) => item.id == id).toList();
+                  if (matches.isNotEmpty) {
+                    respCtrl.text = matches.first.name;
+                  } else if (id == null) {
+                    respCtrl.clear();
+                  }
+                });
+              },
             ),
             TextField(
               controller: valorCtrl,
@@ -259,6 +290,27 @@ class _EditarObjetoDialogState extends State<EditarObjetoDialog> {
                 if (val != null) setState(() => spaceIdSelec = val);
               },
             ),
+            if (widget.canAssignUsers) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Usuarios asignados',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(height: 4),
+              UsuariosAsignadosSelector(
+                accounts: widget.accounts,
+                selectedIds: _assignedIds,
+                onChanged: (ids) => setState(() {
+                  _assignedIds
+                    ..clear()
+                    ..addAll(ids);
+                }),
+              ),
+            ],
           ],
         ),
       ),

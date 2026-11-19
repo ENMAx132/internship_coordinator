@@ -66,6 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   InventoryStore get _store => InventoryScope.of(context);
 
+  int get _indiceMetricas => _store.showHistory ? 3 : 2;
+
   List<Section> _sections(InventoryStore store) => [
         ...store.sections,
         if (_demoSection != null) _demoSection!,
@@ -147,9 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _tutorialBusy = true;
     _mostrarAviso(
-      keep
-          ? 'Guardando datos del tutorial…'
-          : 'Eliminando datos del tutorial…',
+      keep ? 'Guardando datos del tutorial…' : 'Eliminando datos del tutorial…',
     );
 
     final store = _store;
@@ -210,8 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return TutorialPending(
       sectionName: section?.name ?? 'Apartado de ejemplo',
-      sectionDescription:
-          section?.description ?? 'Creado por el tutorial',
+      sectionDescription: section?.description ?? 'Creado por el tutorial',
       sectionIcon: section?.icon ?? '🏢',
       spaceName: space?.name ?? 'Espacio de ejemplo',
       spaceDescription: space?.description ?? 'Creado por el tutorial',
@@ -285,10 +284,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _crearDemoObjeto();
         break;
       case 6:
-        setState(() => _paginaActual = 2);
+        setState(
+            () => _paginaActual = _store.showHistory ? 2 : _indiceMetricas);
         break;
       case 7:
-        setState(() => _paginaActual = 3);
+        setState(() => _paginaActual = _indiceMetricas);
         break;
       default:
         break;
@@ -438,16 +438,21 @@ class _HomeScreenState extends State<HomeScreen> {
       PasoTutorial(
         objetivo: _keyHistorial,
         emoji: '🕘',
-        titulo: 'Historial',
-        descripcion:
-            'Aquí se guarda la actividad del inventario. Tiene dos vistas:',
-        detalles: [
-          '🛠️ Revisiones: objetos que han pasado por revisión, con fecha de '
-              'entrada y, si ya salieron, fecha de salida.',
-          '🕘 Registros: todos los objetos agregados y su fecha de registro.',
-          'Cada tarjeta muestra el nombre, la placa, el espacio y el estado '
-              'del objeto.',
-        ],
+        titulo: _store.showHistory ? 'Historial' : 'Historial (solo lectura)',
+        descripcion: _store.showHistory
+            ? 'Aquí se guarda la actividad del inventario. Tiene dos vistas:'
+            : 'Los colaboradores no ven esta sección. Tu actividad queda '
+                'registrada y la consulta un administrador o supervisor.',
+        detalles: _store.showHistory
+            ? [
+                '🛠️ Revisiones: objetos que han pasado por revisión, con fecha '
+                    'de entrada y, si ya salieron, fecha de salida.',
+                '🕘 Registros: todos los objetos agregados y su fecha de '
+                    'registro.',
+                'Cada tarjeta muestra el nombre, la placa, el espacio y el '
+                    'estado del objeto.',
+              ]
+            : const [],
       ),
       PasoTutorial(
         objetivo: _keyMetricas,
@@ -497,6 +502,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => CrearApartadoDialog(
         emojis: store.catalogs.sectionEmojis,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
+        personalInventory: store.session.user.isCollaborator,
         onCrear: (draft) {
           _run(
             () => store.createSection(draft),
@@ -509,16 +517,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _crearEspacio() {
     final store = _store;
-    if (store.sections.isEmpty) {
+    final sections = store.editableSections;
+    if (sections.isEmpty) {
       _mostrarAviso('Crea primero un apartado.');
       return;
     }
     showDialog(
       context: context,
       builder: (ctx) => CrearEspacioDialog(
-        sections: store.sections,
+        sections: sections,
         spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onCrear: (draft) {
           _run(
             () => store.createSpace(draft),
@@ -531,7 +542,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _crearObjeto() async {
     final store = _store;
-    if (store.spaces.isEmpty) {
+    final spaces = store.editableSpaces;
+    if (spaces.isEmpty) {
       _mostrarAviso('Crea primero un espacio.');
       return;
     }
@@ -547,9 +559,14 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => CrearObjetoDialog(
-        spaces: store.spaces,
+        spaces: spaces,
         catalogs: store.catalogs,
         placaInicial: placa,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
+        canPickResponsible: store.session.user.isAdmin,
+        currentUserId: store.session.user.id,
+        currentUserName: store.session.user.name,
         onGuardar: (draft) {
           _run(
             () => store.createItem(draft),
@@ -582,8 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pending = _store.pendingTutorial;
     if (pending == null) return false;
     if (space.id == TutorialPending.localSpaceId) return true;
-    if (pending.remoteSpaceId != null &&
-        space.id == pending.remoteSpaceId) {
+    if (pending.remoteSpaceId != null && space.id == pending.remoteSpaceId) {
       return _store.spaceById(space.id) == null;
     }
     return false;
@@ -635,6 +651,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => EditarApartadoDialog(
         section: section,
         emojis: store.catalogs.sectionEmojis,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onActualizar: (draft) {
           _run(
             () => store.updateSection(section.id, draft),
@@ -728,6 +746,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final store = _store;
     final canWrite = store.canWrite && !store.offline;
+    final showHistory = store.showHistory;
+    final pageCount = showHistory ? 4 : 3;
+    final paginaActual = _paginaActual.clamp(0, pageCount - 1);
 
     return Stack(
       children: [
@@ -756,11 +777,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 Expanded(
                   child: IndexedStack(
-                    index: _paginaActual,
+                    index: paginaActual,
                     children: [
                       _construirInicio(store, canWrite),
                       _construirApartados(store, canWrite),
-                      HistorialScreen(onLogout: widget.onLogout),
+                      if (showHistory)
+                        HistorialScreen(onLogout: widget.onLogout),
                       MetricasScreen(onLogout: widget.onLogout),
                     ],
                   ),
@@ -768,7 +790,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          bottomNavigationBar: _construirBarraNavegacion(store, canWrite),
+          bottomNavigationBar:
+              _construirBarraNavegacion(store, canWrite, paginaActual),
         ),
         if (_mostrarTutorial)
           TutorialCoachMarks(
@@ -837,8 +860,7 @@ class _HomeScreenState extends State<HomeScreen> {
               sections: sections,
               apartadoInicialId: store.settings.startSectionId,
               spacesOf: (sectionId) => _spacesOf(store, sectionId),
-              itemsOfSection: (sectionId) =>
-                  _itemsOfSection(store, sectionId),
+              itemsOfSection: (sectionId) => _itemsOfSection(store, sectionId),
               itemsOfSpace: (spaceId) => _itemsOfSpace(store, spaceId),
               onOpenSection: _abrirApartado,
               onOpenSpace: _abrirEspacio,
@@ -928,6 +950,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 20),
+          if (store.canViewAll) ...[
+            _construirFiltros(store),
+            const SizedBox(height: 16),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -970,9 +996,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         key: section.id == TutorialPending.localSectionId
                             ? _keyDemoApartado
                             : null,
-                        onLongPress: canWrite &&
-                                section.id >= 0 &&
-                                !_esApartadoPendiente(section)
+                        onLongPress: section.id >= 0 &&
+                                !_esApartadoPendiente(section) &&
+                                store.canEditSection(section)
                             ? () => _dialogoEditarApartado(section)
                             : null,
                         child: ApartadoCard(
@@ -988,6 +1014,235 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _construirFiltros(InventoryStore store) {
+    final userId = store.userFilterId;
+    final esMiInventario = userId == store.session.user.id;
+    final user = userId == null ? null : store.accountById(userId);
+    final userLabel = userId == null || esMiInventario
+        ? 'Usuario'
+        : 'Usuario: ${user?.name ?? '#$userId'}';
+    final sinFiltros =
+        store.ownershipFilter == null && store.userFilterId == null;
+
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _chipFiltro('Todos', sinFiltros, () => store.clearFilters()),
+          const SizedBox(width: 8),
+          _chipFiltro(
+            'Mi inventario',
+            store.userFilterId == store.session.user.id,
+            () => store.setUserFilter(store.session.user.id),
+          ),
+          const SizedBox(width: 8),
+          _chipFiltro(
+            'Personales',
+            store.ownershipFilter == 'personal',
+            () => store.setOwnershipFilter('personal'),
+          ),
+          const SizedBox(width: 8),
+          _chipFiltro(
+            'Asignados',
+            store.ownershipFilter == 'assigned',
+            () => store.setOwnershipFilter('assigned'),
+          ),
+          const SizedBox(width: 8),
+          _chipFiltro(
+            'Global',
+            store.ownershipFilter == 'global',
+            () => store.setOwnershipFilter('global'),
+          ),
+          const SizedBox(width: 8),
+          _chipFiltro(
+            userLabel,
+            store.userFilterId != null && !esMiInventario,
+            () => _seleccionarUsuarioFiltro(store),
+            icono: Icons.person_search_outlined,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chipFiltro(
+    String texto,
+    bool seleccionado,
+    VoidCallback onTap, {
+    IconData? icono,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: seleccionado ? const Color(0xFF6366F1) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icono != null) ...[
+              Icon(
+                icono,
+                size: 14,
+                color: seleccionado ? Colors.white : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              texto,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: seleccionado ? Colors.white : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _seleccionarUsuarioFiltro(InventoryStore store) async {
+    final controller = TextEditingController();
+    var query = '';
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final accounts = store.accounts.where((account) {
+              if (query.isEmpty) return true;
+              return account.name.toLowerCase().contains(query) ||
+                  account.email.toLowerCase().contains(query);
+            }).toList();
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: 440,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Filtrar por usuario',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: controller,
+                        onChanged: (value) =>
+                            setSheet(() => query = value.trim().toLowerCase()),
+                        decoration: const InputDecoration(
+                          hintText: 'Buscar por nombre o correo',
+                          prefixIcon: Icon(Icons.search, size: 18),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListView(
+                          children: [
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(
+                                Icons.clear,
+                                size: 18,
+                                color: Color(0xFF64748B),
+                              ),
+                              title: const Text(
+                                'Quitar filtro de usuario',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              onTap: () => Navigator.pop(ctx, 0),
+                            ),
+                            ...accounts.map(
+                              (account) => ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: const Color(0xFFEEF2FF),
+                                  child: Text(
+                                    account.name.isEmpty
+                                        ? '?'
+                                        : account.name
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF4F46E5),
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  account.name,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                subtitle: Text(
+                                  '${account.roleLabel} · ${account.email}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                onTap: () => Navigator.pop(ctx, account.id),
+                              ),
+                            ),
+                            if (accounts.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Text(
+                                  'No se encontraron usuarios.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    if (selected == null || !mounted) return;
+    if (selected == 0) {
+      await store.clearFilters();
+    } else {
+      await store.setUserFilter(selected);
+    }
   }
 
   Widget _construirResumen({required String etiqueta, required String valor}) {
@@ -1059,7 +1314,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _construirBarraNavegacion(InventoryStore store, bool canWrite) {
+  Widget _construirBarraNavegacion(
+    InventoryStore store,
+    bool canWrite,
+    int paginaActual,
+  ) {
+    final metricasPage = store.showHistory ? 3 : 2;
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -1084,6 +1344,7 @@ class _HomeScreenState extends State<HomeScreen> {
               iconoActivo: Icons.home_rounded,
               etiqueta: 'Inicio',
               pagina: 0,
+              paginaActual: paginaActual,
             ),
             _construirItemNav(
               clave: _keyApartados,
@@ -1091,21 +1352,25 @@ class _HomeScreenState extends State<HomeScreen> {
               iconoActivo: Icons.grid_view_rounded,
               etiqueta: 'Apartados',
               pagina: 1,
+              paginaActual: paginaActual,
             ),
             if (canWrite) _construirBotonAgregar(),
-            _construirItemNav(
-              clave: _keyHistorial,
-              icono: Icons.chat_bubble_outline,
-              iconoActivo: Icons.chat_bubble,
-              etiqueta: 'Historial',
-              pagina: 2,
-            ),
+            if (store.showHistory)
+              _construirItemNav(
+                clave: _keyHistorial,
+                icono: Icons.chat_bubble_outline,
+                iconoActivo: Icons.chat_bubble,
+                etiqueta: 'Historial',
+                pagina: 2,
+                paginaActual: paginaActual,
+              ),
             _construirItemNav(
               clave: _keyMetricas,
               icono: Icons.person_outline,
               iconoActivo: Icons.person,
               etiqueta: 'Métricas',
-              pagina: 3,
+              pagina: metricasPage,
+              paginaActual: paginaActual,
             ),
           ],
         ),
@@ -1119,8 +1384,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData iconoActivo,
     required String etiqueta,
     required int pagina,
+    required int paginaActual,
   }) {
-    final seleccionado = _paginaActual == pagina;
+    final seleccionado = paginaActual == pagina;
     return Expanded(
       child: GestureDetector(
         key: clave,
@@ -1426,8 +1692,7 @@ class _InicioApartadosState extends State<_InicioApartados> {
               : GridView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 24),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,

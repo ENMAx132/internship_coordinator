@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account.dart';
 import '../../models/drafts.dart';
 import '../../models/section.dart';
 import '../../widgets/seleccionar_imagen_icono.dart';
+import 'selectores_inventario.dart';
 
 class EditarApartadoDialog extends StatefulWidget {
   final Section section;
   final ValueChanged<SectionDraft> onActualizar;
   final VoidCallback onEliminar;
   final List<String> emojis;
+  final List<Account> accounts;
+  final bool canAssignUsers;
 
   const EditarApartadoDialog({
     super.key,
@@ -16,6 +20,8 @@ class EditarApartadoDialog extends StatefulWidget {
     required this.onActualizar,
     required this.onEliminar,
     this.emojis = const ['🏢', '💻', '📊', '📦', '🤝', '☕', '🔬', '🛋️'],
+    this.accounts = const [],
+    this.canAssignUsers = false,
   });
 
   @override
@@ -27,10 +33,10 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
   late final TextEditingController descCtrl;
   late String emojiSelec;
   String? localImagePath;
+  late Set<int> _assignedIds;
 
-  List<String> get _emojis => widget.emojis.isEmpty
-      ? const ['🏢', '💻', '📊', '📦']
-      : widget.emojis;
+  List<String> get _emojis =>
+      widget.emojis.isEmpty ? const ['🏢', '💻', '📊', '📦'] : widget.emojis;
 
   @override
   void initState() {
@@ -38,6 +44,7 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
     nombreCtrl = TextEditingController(text: widget.section.name);
     descCtrl = TextEditingController(text: widget.section.description);
     emojiSelec = widget.section.icon;
+    _assignedIds = widget.section.assignedUsers.map((user) => user.id).toSet();
   }
 
   @override
@@ -112,6 +119,27 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
               controller: descCtrl,
               decoration: const InputDecoration(labelText: 'Descripción breve'),
             ),
+            if (widget.canAssignUsers) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Usuarios asignados',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(height: 4),
+              UsuariosAsignadosSelector(
+                accounts: widget.accounts,
+                selectedIds: _assignedIds,
+                onChanged: (ids) => setState(() {
+                  _assignedIds
+                    ..clear()
+                    ..addAll(ids);
+                }),
+              ),
+            ],
           ],
         ),
       ),
@@ -140,6 +168,7 @@ class _EditarApartadoDialogState extends State<EditarApartadoDialog> {
                       ? 'Nuevo apartado'
                       : descCtrl.text.trim(),
                   localImagePath: localImagePath,
+                  assignedUserIds: _assignedIds.toList(),
                 ),
               );
               Navigator.pop(context);

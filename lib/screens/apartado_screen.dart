@@ -66,6 +66,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
       context: context,
       builder: (ctx) => EditarApartadoDialog(
         section: _section,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onActualizar: (draft) {
           _run(
             () => store.updateSection(_section.id, draft),
@@ -91,6 +93,8 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
         spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
         initialSectionId: _section.id,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onCrear: (draft) {
           _run(
             () => store.createSpace(draft),
@@ -107,9 +111,13 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
       context: context,
       builder: (ctx) => EditarEspacioDialog(
         space: space,
-        sections: store.sections,
+        sections: store.session.user.isAdmin
+            ? store.sections
+            : store.editableSections,
         spaces: store.spaces,
         emojis: store.catalogs.spaceEmojis,
+        accounts: store.accounts,
+        canAssignUsers: store.canManageAssignments,
         onActualizar: (draft) {
           _run(
             () => store.updateSpace(space.id, draft),
@@ -129,7 +137,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
   @override
   Widget build(BuildContext context) {
     final store = _store;
-    final canWrite = store.canWrite && !store.offline;
+    final canEdit = store.canEditSection(_section) && !store.offline;
     final section = _section;
     final spaces = store.rootSpacesForSection(section.id);
     final totalSpaces = store.spacesForSection(section.id).length;
@@ -143,7 +151,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
         ),
         title: Text(section.name),
         actions: [
-          if (canWrite)
+          if (canEdit)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Editar apartado',
@@ -241,7 +249,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                       color: Color(0xFF0F172A),
                     ),
                   ),
-                  if (canWrite)
+                  if (canEdit)
                     InkWell(
                       onTap: _dialogoCrearEspacio,
                       borderRadius: BorderRadius.circular(50),
@@ -264,7 +272,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
             ),
             Expanded(
               child: spaces.isEmpty
-                  ? _construirEspacioVacio(canWrite)
+                  ? _construirEspacioVacio(canEdit)
                   : GridView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -284,7 +292,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
                           subspaces: store.subspacesOf(space.id).length,
                           isSelected: false,
                           onTap: () => _abrirEspacio(space),
-                          onLongPress: canWrite
+                          onLongPress: canEdit
                               ? () => _dialogoEditarEspacio(space)
                               : () {},
                         );
@@ -297,7 +305,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
     );
   }
 
-  Widget _construirEspacioVacio(bool canWrite) {
+  Widget _construirEspacioVacio(bool canEdit) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -311,7 +319,7 @@ class _ApartadoScreenState extends State<ApartadoScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (canWrite) ...[
+          if (canEdit) ...[
             const SizedBox(height: 12),
             ElevatedButton(
               style: ElevatedButton.styleFrom(

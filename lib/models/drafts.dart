@@ -5,6 +5,7 @@ class SectionDraft {
     required this.icon,
     this.imageUrl,
     this.localImagePath,
+    this.assignedUserIds = const [],
   });
 
   final String name;
@@ -12,6 +13,7 @@ class SectionDraft {
   final String icon;
   final String? imageUrl;
   final String? localImagePath;
+  final List<int> assignedUserIds;
 }
 
 class SpaceDraft {
@@ -23,6 +25,7 @@ class SpaceDraft {
     this.parentSpaceId,
     this.imageUrl,
     this.localImagePath,
+    this.assignedUserIds = const [],
   });
 
   final int sectionId;
@@ -32,6 +35,7 @@ class SpaceDraft {
   final int? parentSpaceId;
   final String? imageUrl;
   final String? localImagePath;
+  final List<int> assignedUserIds;
 }
 
 class ItemDraft {
@@ -44,8 +48,10 @@ class ItemDraft {
     required this.value,
     required this.responsible,
     required this.brand,
+    this.responsibleUserId,
     this.imageUrl,
     this.localImagePath,
+    this.assignedUserIds = const [],
   });
 
   final int spaceId;
@@ -56,8 +62,10 @@ class ItemDraft {
   final double value;
   final String responsible;
   final String brand;
+  final int? responsibleUserId;
   final String? imageUrl;
   final String? localImagePath;
+  final List<int> assignedUserIds;
 }
 
 class ItemChanges {
@@ -73,6 +81,9 @@ class ItemChanges {
     this.imageUrl,
     this.localImagePath,
     this.exitReason,
+    this.assignedUserIds,
+    this.responsibleUserId,
+    this.updateResponsible = false,
   });
 
   final int? spaceId;
@@ -86,4 +97,9 @@ class ItemChanges {
   final String? imageUrl;
   final String? localImagePath;
   final String? exitReason;
+
+  /// `null` significa no tocar las asignaciones.
+  final List<int>? assignedUserIds;
+  final int? responsibleUserId;
+  final bool updateResponsible;
 }
